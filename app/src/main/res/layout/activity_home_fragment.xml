@@ -1,0 +1,199 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@android:color/white">
+
+    <!-- Top nav bar -->
+    <RelativeLayout
+        android:id="@+id/topNavBar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="10dp"
+        android:background="#C5D5EA">
+
+        <TextView
+            android:id="@+id/tvTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="AppointAble"
+            android:textColor="#212121"
+            android:textSize="20dp"
+            android:fontFamily="@font/poppins_bold"
+            android:layout_centerInParent="true"/>
+    </RelativeLayout>
+
+    <!-- Greetings to the user -->
+
+    <RelativeLayout
+        android:id="@+id/greetings_user"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="10dp"
+        android:background="#ABB9EE">
+
+        <TextView
+            android:id="@+id/goodMorning"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Good Morning,"
+            android:textColor="#212121"
+            android:textSize="15sp"
+            android:fontFamily="@font/poppins"/>
+
+        <TextView
+            android:id="@+id/nameOfUser"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Ms Kate!"
+            android:textColor="#212121"
+            android:textSize="20dp"
+            android:fontFamily="@font/poppins_bold"
+            android:layout_below="@id/goodMorning"
+            android:layout_marginTop="4dp"/>
+    </RelativeLayout>
+
+    <CalendarView
+        android:id="@+id/calendarView"
+        android:layout_width="match_parent"
+        android:layout_height="300dp"
+        android:layout_marginBottom="10dp"
+        android:background="#fafafa"/>
+
+    <!-- "Today" section title -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Today"
+        android:textSize="18dp"
+        android:textColor="#212121"
+        android:fontFamily="@font/poppins_bold"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="8dp" />
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:paddingBottom="16dp">
+
+        <LinearLayout
+            android:id="@+id/appointmentsContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <!-- Your appointment cards here -->
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="12dp"
+                android:layout_marginBottom="10dp"
+                android:background="#C5D5EA">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Joshua Pre"
+                    android:textSize="18sp"
+                    android:textColor="#212121"
+                    android:fontFamily="@font/poppins_bold" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Speech Therapy"
+                    android:textSize="15sp"
+                    android:textColor="#333333"
+                    android:fontFamily="@font/poppins"
+                    android:layout_marginTop="3dp"/>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="9:00 AM"
+                    android:textSize="14sp"
+                    android:textColor="#212121"
+                    android:fontFamily="@font/poppins_medium"
+                    android:layout_marginTop="4dp"/>
+            </LinearLayout>
+
+            <!-- Repeat more static items or will be dynamic later -->
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="12dp"
+                android:layout_marginBottom="10dp"
+                android:background="#C5D5EA">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Joshua Pre"
+                    android:textSize="18sp"
+                    android:textColor="#212121"
+                    android:fontFamily="@font/poppins_bold" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Speech Therapy"
+                    android:textSize="15sp"
+                    android:textColor="#333333"
+                    android:fontFamily="@font/poppins"
+                    android:layout_marginTop="3dp"/>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="9:00 AM"
+                    android:textSize="14sp"
+                    android:textColor="#212121"
+                    android:fontFamily="@font/poppins_medium"
+                    android:layout_marginTop="4dp"/>
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="12dp"
+                android:layout_marginBottom="10dp"
+                android:background="#C5D5EA">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Joshua Pre"
+                    android:textSize="18sp"
+                    android:textColor="#212121"
+                    android:fontFamily="@font/poppins_bold" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Speech Therapy"
+                    android:textSize="15sp"
+                    android:textColor="#333333"
+                    android:fontFamily="@font/poppins"
+                    android:layout_marginTop="3dp"/>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="9:00 AM"
+                    android:textSize="14sp"
+                    android:textColor="#212121"
+                    android:fontFamily="@font/poppins_medium"
+                    android:layout_marginTop="4dp"/>
+            </LinearLayout>
+
+        </LinearLayout>
+    </ScrollView>
+</LinearLayout>
