@@ -11,12 +11,14 @@ import android.text.method.LinkMovementMethod;
 import android.text.style.ClickableSpan;
 import android.text.style.ForegroundColorSpan;
 import android.text.style.UnderlineSpan;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
+import android.widget.RadioButton;
+import android.widget.RadioGroup;
 import android.widget.Spinner;
 import android.widget.TextView;
-import android.widget.ArrayAdapter;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -45,12 +47,17 @@ public class RegisterActivity extends AppCompatActivity {
     private boolean isPasswordVisible = false;
     private boolean isConfirmPasswordVisible = false;
 
+    private RadioGroup rgGender;
+    private RadioButton rbMale, rbFemale;
+
+    private static final String DEFAULT_PROFILE_IMAGE_URL =
+            "https://res.cloudinary.com/djqcwj12e/image/upload/v1763541795/default-profile_ro3fld.jpg";
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
         FirebaseApp.initializeApp(this);
-
         setContentView(R.layout.activity_register);
 
         mAuth = FirebaseAuth.getInstance();
@@ -86,6 +93,10 @@ public class RegisterActivity extends AppCompatActivity {
         ivToggleConfirmPassword = findViewById(R.id.ivToggleConfirmPassword);
 
         spinnerRole = findViewById(R.id.spinnerRole);
+
+        rgGender = findViewById(R.id.rgGender);
+        rbMale = findViewById(R.id.rbMale);
+        rbFemale = findViewById(R.id.rbFemale);
 
         ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(
                 this,
@@ -161,7 +172,8 @@ public class RegisterActivity extends AppCompatActivity {
                         String date = (selectedMonth + 1) + "/" + selectedDay + "/" + selectedYear;
                         etBirthdate.setText(date);
 
-                        etAge.setText(String.valueOf(calculateAge(selectedYear, selectedMonth, selectedDay)));
+                        int age = calculateAge(selectedYear, selectedMonth, selectedDay);
+                        etAge.setText(String.valueOf(age));
                     },
                     year, month, day
             );
@@ -183,7 +195,6 @@ public class RegisterActivity extends AppCompatActivity {
         }
         return age;
     }
-
 
     private String generateUserId() {
         int year = Calendar.getInstance().get(Calendar.YEAR);
@@ -210,9 +221,22 @@ public class RegisterActivity extends AppCompatActivity {
         String pass = etPassword.getText().toString().trim();
         String confirm = etConfirmPassword.getText().toString().trim();
 
+        String genderTemp = null;
+        int selectedGenderId = rgGender.getCheckedRadioButtonId();
+        if (selectedGenderId == R.id.rbMale) {
+            genderTemp = "Male";
+        } else if (selectedGenderId == R.id.rbFemale) {
+            genderTemp = "Female";
+        }
+
+        final String gender = genderTemp;
+
         if (first.isEmpty() || last.isEmpty() || birthdate.isEmpty() || age.isEmpty()
-                || contact.isEmpty() || email.isEmpty() || pass.isEmpty() || confirm.isEmpty()) {
-            Toast.makeText(this, "Please fill in all required fields.", Toast.LENGTH_LONG).show();
+                || contact.isEmpty() || email.isEmpty() || pass.isEmpty() || confirm.isEmpty()
+                || gender == null) {
+            Toast.makeText(this,
+                    "Please fill in all required fields and select gender.",
+                    Toast.LENGTH_LONG).show();
             return;
         }
 
@@ -241,6 +265,10 @@ public class RegisterActivity extends AppCompatActivity {
                     user.put("email", email);
                     user.put("username", username);
                     user.put("role", role);
+                    user.put("gender", gender);          // now ok
+
+                    user.put("status", "Active");
+                    user.put("profileImageUrl", DEFAULT_PROFILE_IMAGE_URL);
 
                     db.collection("users").document(uid)
                             .set(user)
@@ -250,11 +278,15 @@ public class RegisterActivity extends AppCompatActivity {
                                 finish();
                             })
                             .addOnFailureListener(e ->
-                                    Toast.makeText(this, "Error saving user: " + e.getMessage(), Toast.LENGTH_LONG).show()
+                                    Toast.makeText(this,
+                                            "Error saving user: " + e.getMessage(),
+                                            Toast.LENGTH_LONG).show()
                             );
                 })
                 .addOnFailureListener(e ->
-                        Toast.makeText(this, "Registration failed: " + e.getMessage(), Toast.LENGTH_LONG).show()
+                        Toast.makeText(this,
+                                "Registration failed: " + e.getMessage(),
+                                Toast.LENGTH_LONG).show()
                 );
     }
 }

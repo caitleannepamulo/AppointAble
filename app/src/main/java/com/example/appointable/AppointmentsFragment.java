@@ -14,6 +14,6 @@ public class AppointmentsFragment extends Fragment {
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
-        return inflater.inflate(R.layout.activity_parent_home_fragment, container, false);
+        return inflater.inflate(R.layout.activity_parent_appointment_fragment, container, false);
     }
 }

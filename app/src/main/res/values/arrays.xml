@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string-array name="role_list">
-        <item>----</item>
+        <item>--Select Role--</item>
         <item>Student</item>
         <item>OT Associates</item>
         <item>Sped Teacher</item>

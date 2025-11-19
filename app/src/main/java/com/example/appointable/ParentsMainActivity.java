@@ -12,8 +12,8 @@ import java.util.Map;
 
 public class ParentsMainActivity extends AppCompatActivity {
 
-    BottomNavigationView bottomNavigationView;
-    Map<Integer, Fragment> fragmentMap = new HashMap<>();
+    private BottomNavigationView bottomNavigationView;
+    private final Map<Integer, Fragment> fragmentMap = new HashMap<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -22,14 +22,13 @@ public class ParentsMainActivity extends AppCompatActivity {
 
         bottomNavigationView = findViewById(R.id.bottom_navigation);
 
-        fragmentMap.put(R.id.nav_parent_home, new ParentHomeFragment());
+        // Correct fragment mapping
+        fragmentMap.put(R.id.nav_home, new ParentHomeFragment());
         fragmentMap.put(R.id.nav_appointments, new AppointmentsFragment());
-        fragmentMap.put(R.id.nav_students, new StudentsFragment());
         fragmentMap.put(R.id.nav_messages, new MessagesFragment());
         fragmentMap.put(R.id.nav_profile, new ProfileFragment());
 
-        loadFragment(new ParentHomeFragment());
-
+        // Listener for bottom nav
         bottomNavigationView.setOnItemSelectedListener(item -> {
             Fragment fragment = fragmentMap.get(item.getItemId());
             if (fragment != null) {
@@ -38,6 +37,11 @@ public class ParentsMainActivity extends AppCompatActivity {
             }
             return false;
         });
+
+        // IMPORTANT: Set the selected tab instead of calling loadFragment manually
+        if (savedInstanceState == null) {
+            bottomNavigationView.setSelectedItemId(R.id.nav_home); // This loads Home first
+        }
     }
 
     private void loadFragment(Fragment fragment) {

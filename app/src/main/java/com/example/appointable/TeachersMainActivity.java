@@ -19,7 +19,7 @@ public class TeachersMainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         // make sure this layout has: bottom_navigation + fragment_container
-        setContentView(R.layout.activity_parent_main);
+        setContentView(R.layout.activity_teacher_main);
 
         bottomNavigationView = findViewById(R.id.bottom_navigation);
 
