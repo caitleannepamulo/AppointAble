@@ -2,104 +2,220 @@
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    xmlns:app="http://schemas.android.com/apk/res-auto">
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:padding="16dp">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="20dp"
-        android:background="@android:color/white">
+        android:orientation="vertical">
 
         <TextView
             android:id="@+id/tvDialogTitleView"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Student Details"
-            android:textSize="18sp"
+            android:textSize="16sp"
             android:textStyle="bold"
             android:textColor="#000000"
             android:layout_marginBottom="12dp" />
 
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:weightSum="2">
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:paddingRight="4dp"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Firstname"
+                    android:textSize="10sp" />
+
+                <EditText
+                    android:id="@+id/etViewFirstname"
+                    android:layout_width="match_parent"
+                    android:layout_height="36dp"
+                    android:background="@drawable/bg_edittext_outline"
+                    android:paddingLeft="8dp"
+                    android:textSize="12sp"
+                    android:enabled="false" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:paddingLeft="4dp"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Lastname"
+                    android:textSize="10sp" />
+
+                <EditText
+                    android:id="@+id/etViewLastname"
+                    android:layout_width="match_parent"
+                    android:layout_height="36dp"
+                    android:background="@drawable/bg_edittext_outline"
+                    android:paddingLeft="8dp"
+                    android:textSize="12sp"
+                    android:enabled="false" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:weightSum="2"
+            android:layout_marginTop="8dp">
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:paddingRight="4dp"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Middlename"
+                    android:textSize="10sp" />
+
+                <EditText
+                    android:id="@+id/etViewMiddlename"
+                    android:layout_width="match_parent"
+                    android:layout_height="36dp"
+                    android:background="@drawable/bg_edittext_outline"
+                    android:paddingLeft="8dp"
+                    android:textSize="12sp"
+                    android:enabled="false" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:paddingLeft="4dp"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Suffix"
+                    android:textSize="10sp" />
+
+                <EditText
+                    android:id="@+id/etViewSuffix"
+                    android:layout_width="match_parent"
+                    android:layout_height="36dp"
+                    android:background="@drawable/bg_edittext_outline"
+                    android:paddingLeft="8dp"
+                    android:textSize="12sp"
+                    android:enabled="false" />
+            </LinearLayout>
+        </LinearLayout>
+
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Student ID"
-            android:textStyle="bold"
-            android:textSize="14sp" />
+            android:layout_marginTop="8dp"
+            android:text="Student #"
+            android:textSize="10sp" />
 
         <EditText
-            android:id="@+id/etViewID"
+            android:id="@+id/etViewStudentNumber"
+            android:layout_width="match_parent"
+            android:layout_height="36dp"
+            android:background="@drawable/bg_edittext_outline"
+            android:paddingLeft="8dp"
+            android:textSize="12sp"
+            android:enabled="false" />
+
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:enabled="false"
-            android:textColor="#555555"
-            android:background="@drawable/edittext_outline"
-            android:padding="6dp"
-            android:textSize="14sp"
-            android:layout_marginBottom="8dp" />
+            android:layout_marginTop="8dp"
+            android:orientation="horizontal"
+            android:weightSum="2">
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Name"
-            android:textStyle="bold"
-            android:textSize="14sp" />
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:paddingRight="4dp"
+                android:orientation="vertical">
 
-        <EditText
-            android:id="@+id/etViewName"
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Grades"
+                    android:textSize="10sp" />
+
+                <EditText
+                    android:id="@+id/etViewGrades"
+                    android:layout_width="match_parent"
+                    android:layout_height="36dp"
+                    android:inputType="numberDecimal"
+                    android:background="@drawable/bg_edittext_outline"
+                    android:paddingLeft="8dp"
+                    android:textSize="12sp"
+                    android:enabled="false" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:paddingLeft="4dp"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Status"
+                    android:textSize="10sp" />
+
+                <Spinner
+                    android:id="@+id/spViewStatus"
+                    android:layout_width="match_parent"
+                    android:layout_height="36dp"
+                    android:background="@drawable/bg_edittext_outline"
+                    android:paddingLeft="8dp"
+                    android:enabled="false" />
+
+            </LinearLayout>
+        </LinearLayout>
+
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:inputType="textPersonName"
-            android:padding="8dp"
-            android:background="@drawable/edittext_outline"
-            android:layout_marginBottom="8dp" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Grade"
-            android:textStyle="bold"
-            android:textSize="14sp" />
-
-        <EditText
-            android:id="@+id/etViewGrade"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:inputType="text"
-            android:padding="8dp"
-            android:background="@drawable/edittext_outline"
-            android:layout_marginBottom="8dp" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Status"
-            android:textStyle="bold"
-            android:textSize="14sp" />
-
-        <Spinner
-            android:id="@+id/spinnerViewStatus"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:padding="8dp"
-            android:background="@drawable/edittext_outline"
-            android:layout_marginBottom="16dp" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnRegister"
-            android:layout_width="250dp"
-            android:layout_height="48dp"
-            android:text="Register"
-            android:textAllCaps="false"
-            android:textColor="@android:color/white"
-            android:background="@drawable/btn_blue"
-            app:backgroundTint="@null"
             android:layout_marginTop="16dp"
-            android:layout_gravity="center_horizontal"
-            android:fontFamily="@font/poppins_semibold"
-            android:textSize="16sp" />
+            android:gravity="center"
+            android:orientation="horizontal">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnClose"
+                android:layout_width="wrap_content"
+                android:layout_height="50dp"
+                android:text="Cancel"
+                android:textSize="12sp"
+                android:textColor="#FFFFFF"
+                app:cornerRadius="8dp"
+                app:backgroundTint="#C62828" />
+
+        </LinearLayout>
 
     </LinearLayout>
-
 </ScrollView>

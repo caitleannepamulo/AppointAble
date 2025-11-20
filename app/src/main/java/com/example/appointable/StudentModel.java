@@ -1,8 +1,9 @@
 package com.example.appointable;
 
 public class StudentModel {
-
+    public String docId;
     public String studentNumber;
+
     public String firstName;
     public String lastName;
     public String middleName;
@@ -10,13 +11,16 @@ public class StudentModel {
     public String grade;
     public String status;
 
-    public StudentModel(String studentNumber,
+    public StudentModel(String docId,
+                        String studentNumber,
                         String firstName,
                         String lastName,
                         String middleName,
                         String suffix,
                         String grade,
                         String status) {
+
+        this.docId = docId;
         this.studentNumber = studentNumber;
         this.firstName = firstName;
         this.lastName = lastName;
@@ -27,6 +31,6 @@ public class StudentModel {
     }
 
     public String getFullName() {
-        return (firstName + " " + lastName).trim();
+        return (firstName + " " + middleName + " " + lastName + " " + suffix).trim();
     }
 }

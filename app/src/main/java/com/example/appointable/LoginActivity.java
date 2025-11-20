@@ -138,6 +138,16 @@ public class LoginActivity extends AppCompatActivity {
         tvSignUp.setHighlightColor(Color.TRANSPARENT);
     }
 
+    @Override
+    protected void onStart() {
+        super.onStart();
+
+        FirebaseUser currentUser = mAuth.getCurrentUser();
+        if (currentUser != null) {
+            checkUserRoleAndRedirect(currentUser.getUid());
+        }
+    }
+
     private void loginUser() {
         String email = etEmail.getText().toString().trim();
         String password = etPassword.getText().toString().trim();
@@ -166,6 +176,9 @@ public class LoginActivity extends AppCompatActivity {
             return;
         }
 
+        btnSignIn.setEnabled(false);
+        btnSignIn.setText("Signing in...");
+
         mAuth.signInWithEmailAndPassword(email, password)
                 .addOnSuccessListener(authResult -> {
                     FirebaseUser user = mAuth.getCurrentUser();
@@ -184,11 +197,16 @@ public class LoginActivity extends AppCompatActivity {
                         }
 
                         checkUserRoleAndRedirect(user.getUid());
+                    } else {
+                        btnSignIn.setEnabled(true);
+                        btnSignIn.setText("Sign In");
                     }
                 })
-                .addOnFailureListener(e ->
-                        Toast.makeText(LoginActivity.this, e.getMessage(), Toast.LENGTH_LONG).show()
-                );
+                .addOnFailureListener(e -> {
+                    btnSignIn.setEnabled(true);
+                    btnSignIn.setText("Sign In");
+                    Toast.makeText(LoginActivity.this, e.getMessage(), Toast.LENGTH_LONG).show();
+                });
     }
 
     private void checkUserRoleAndRedirect(String uid) {
@@ -197,6 +215,8 @@ public class LoginActivity extends AppCompatActivity {
                 .get()
                 .addOnSuccessListener(doc -> {
                     if (!doc.exists()) {
+                        btnSignIn.setEnabled(true);
+                        btnSignIn.setText("Sign In");
                         Toast.makeText(this, "User data not found.", Toast.LENGTH_LONG).show();
                         return;
                     }
@@ -204,26 +224,36 @@ public class LoginActivity extends AppCompatActivity {
                     String role = doc.getString("role");
 
                     if (role == null) {
+                        btnSignIn.setEnabled(true);
+                        btnSignIn.setText("Sign In");
                         Toast.makeText(this, "Role not found for this account.", Toast.LENGTH_LONG).show();
                         return;
                     }
 
+                    Intent intent;
+
                     if (role.equals("Student")) {
-                        startActivity(new Intent(this, ParentsMainActivity.class));
+                        intent = new Intent(this, ParentsMainActivity.class);
                     } else if (role.equalsIgnoreCase("Sped Teacher") ||
                             role.equalsIgnoreCase("OT Associates") ||
                             role.equalsIgnoreCase("Sped Coordinator") ||
                             role.equalsIgnoreCase("Occupational Therapist")) {
-                        startActivity(new Intent(this, TeachersMainActivity.class));
+                        intent = new Intent(this, TeachersMainActivity.class);
                     } else {
+                        btnSignIn.setEnabled(true);
+                        btnSignIn.setText("Sign In");
                         Toast.makeText(this, "Unknown role: " + role, Toast.LENGTH_LONG).show();
                         return;
                     }
 
+                    intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
+                    startActivity(intent);
                     finish();
                 })
-                .addOnFailureListener(e ->
-                        Toast.makeText(this, "Error loading user role: " + e.getMessage(), Toast.LENGTH_LONG).show()
-                );
+                .addOnFailureListener(e -> {
+                    btnSignIn.setEnabled(true);
+                    btnSignIn.setText("Sign In");
+                    Toast.makeText(this, "Error loading user role: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                });
     }
 }

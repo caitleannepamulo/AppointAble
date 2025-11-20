@@ -18,12 +18,11 @@ public class TeachersMainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        // make sure this layout has: bottom_navigation + fragment_container
+
         setContentView(R.layout.activity_teacher_main);
 
         bottomNavigationView = findViewById(R.id.bottom_navigation);
 
-        // map each nav item to the correct TEACHER fragment
         fragmentMap.put(R.id.nav_home, new TeacherHomeFragment());
         fragmentMap.put(R.id.nav_appointments, new Schedule_TeacherFragment());
         fragmentMap.put(R.id.nav_students, new Student_TeacherFragment());

@@ -37,7 +37,7 @@
                     android:id="@+id/tvRemainingCount"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="15"
+                    android:text=""
                     android:textSize="26sp"
                     android:textColor="@android:color/white"
                     android:fontFamily="@font/poppins_bold" />

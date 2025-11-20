@@ -207,7 +207,54 @@ public class RegisterActivity extends AppCompatActivity {
         return yearPart + randomPart;
     }
 
+    private void clearFieldErrors() {
+        etFirstname.setError(null);
+        etLastname.setError(null);
+        etBirthdate.setError(null);
+        etContact.setError(null);
+        etEmail.setError(null);
+        etUsername.setError(null);
+        etPassword.setError(null);
+        etConfirmPassword.setError(null);
+    }
+
+    private void setLoading(boolean loading) {
+        if (loading) {
+            btnRegister.setEnabled(false);
+            btnRegister.setText("Registering...");
+        } else {
+            btnRegister.setEnabled(true);
+            btnRegister.setText("Register");
+        }
+    }
+
+    private boolean isValidPassword(String password) {
+        if (password == null || password.length() < 8) return false;
+
+        boolean hasUpper = false;
+        boolean hasSpecial = false;
+
+        for (char c : password.toCharArray()) {
+            if (Character.isUpperCase(c)) {
+                hasUpper = true;
+            }
+            if ("!@#$%^&*()_+-={}[]|:;\"'<>,.?/".indexOf(c) >= 0) {
+                hasSpecial = true;
+            }
+        }
+
+        return hasUpper && hasSpecial;
+    }
+
+    private boolean isValidContact(String contact) {
+        if (contact == null) return false;
+        return contact.matches("\\d{11,12}");
+    }
+
     private void registerUser() {
+
+        btnRegister.setEnabled(false);
+        clearFieldErrors();
 
         String first = etFirstname.getText().toString().trim();
         String last = etLastname.getText().toString().trim();
@@ -221,72 +268,176 @@ public class RegisterActivity extends AppCompatActivity {
         String pass = etPassword.getText().toString().trim();
         String confirm = etConfirmPassword.getText().toString().trim();
 
-        String genderTemp = null;
         int selectedGenderId = rgGender.getCheckedRadioButtonId();
+        String genderTemp = null;
         if (selectedGenderId == R.id.rbMale) {
             genderTemp = "Male";
         } else if (selectedGenderId == R.id.rbFemale) {
             genderTemp = "Female";
         }
-
         final String gender = genderTemp;
 
-        if (first.isEmpty() || last.isEmpty() || birthdate.isEmpty() || age.isEmpty()
-                || contact.isEmpty() || email.isEmpty() || pass.isEmpty() || confirm.isEmpty()
-                || gender == null) {
-            Toast.makeText(this,
-                    "Please fill in all required fields and select gender.",
-                    Toast.LENGTH_LONG).show();
-            return;
+        String role = spinnerRole.getSelectedItem() != null
+                ? spinnerRole.getSelectedItem().toString()
+                : "";
+
+        boolean isValid = true;
+
+        if (first.isEmpty()) {
+            etFirstname.setError("First name is required");
+            isValid = false;
         }
 
-        if (!pass.equals(confirm)) {
+        if (last.isEmpty()) {
+            etLastname.setError("Last name is required");
+            isValid = false;
+        }
+
+        if (birthdate.isEmpty()) {
+            etBirthdate.setError("Birthdate is required");
+            isValid = false;
+        }
+
+        if (contact.isEmpty()) {
+            etContact.setError("Contact number is required");
+            isValid = false;
+        }
+
+        if (email.isEmpty()) {
+            etEmail.setError("Email is required");
+            isValid = false;
+        }
+
+        if (username.isEmpty()) {
+            etUsername.setError("Username is required");
+            isValid = false;
+        }
+
+        if (pass.isEmpty()) {
+            etPassword.setError("Password is required");
+            isValid = false;
+        }
+
+        if (confirm.isEmpty()) {
+            etConfirmPassword.setError("Please confirm your password");
+            isValid = false;
+        }
+
+        if (gender == null) {
+            Toast.makeText(this, "Please select gender.", Toast.LENGTH_SHORT).show();
+            isValid = false;
+        }
+
+        if (role.isEmpty()
+                || spinnerRole.getSelectedItemPosition() == 0
+                || "--Select Role--".equals(role)) {
+            Toast.makeText(this, "Please select a valid role.", Toast.LENGTH_SHORT).show();
+            isValid = false;
+        }
+
+        if (!contact.isEmpty() && !isValidContact(contact)) {
+            etContact.setError("Contact number must be 11 or 12 digits.");
+            isValid = false;
+        }
+
+        if (!pass.isEmpty() && !isValidPassword(pass)) {
+            etPassword.setError("Min 8 chars, 1 capital letter, and 1 special character.");
+            isValid = false;
+        }
+
+        if (!pass.isEmpty() && !confirm.isEmpty() && !pass.equals(confirm)) {
+            etConfirmPassword.setError("Passwords do not match.");
             Toast.makeText(this, "Passwords do not match.", Toast.LENGTH_SHORT).show();
+            isValid = false;
+        }
+
+        if (!isValid) {
+            btnRegister.setEnabled(true);
             return;
         }
 
-        String role = spinnerRole.getSelectedItem().toString();
+        setLoading(true);
+
         String userId = generateUserId();
 
-        mAuth.createUserWithEmailAndPassword(email, pass)
-                .addOnSuccessListener(auth -> {
-                    String uid = auth.getUser().getUid();
+        db.collection("users")
+                .whereEqualTo("username", username)
+                .get()
+                .addOnSuccessListener(usernameSnapshot -> {
+                    if (!usernameSnapshot.isEmpty()) {
+                        etUsername.setError("Username already exists.");
+                        Toast.makeText(this, "Username already exists.", Toast.LENGTH_LONG).show();
+                        setLoading(false);
+                        return;
+                    }
 
-                    Map<String, Object> user = new HashMap<>();
-                    user.put("uid", uid);
-                    user.put("userId", userId);
-                    user.put("firstName", first);
-                    user.put("lastName", last);
-                    user.put("middleName", middle);
-                    user.put("suffix", suffix);
-                    user.put("birthdate", birthdate);
-                    user.put("age", age);
-                    user.put("contact", contact);
-                    user.put("email", email);
-                    user.put("username", username);
-                    user.put("role", role);
-                    user.put("gender", gender);          // now ok
+                    db.collection("users")
+                            .whereEqualTo("email", email)
+                            .get()
+                            .addOnSuccessListener(emailSnapshot -> {
+                                if (!emailSnapshot.isEmpty()) {
+                                    etEmail.setError("Email already exists.");
+                                    Toast.makeText(this, "Email already exists.", Toast.LENGTH_LONG).show();
+                                    setLoading(false);
+                                    return;
+                                }
 
-                    user.put("status", "Active");
-                    user.put("profileImageUrl", DEFAULT_PROFILE_IMAGE_URL);
+                                mAuth.createUserWithEmailAndPassword(email, pass)
+                                        .addOnSuccessListener(auth -> {
+                                            String uid = auth.getUser().getUid();
 
-                    db.collection("users").document(uid)
-                            .set(user)
-                            .addOnSuccessListener(a -> {
-                                Toast.makeText(this, "Registered successfully!", Toast.LENGTH_SHORT).show();
-                                startActivity(new Intent(this, LoginActivity.class));
-                                finish();
+                                            Map<String, Object> user = new HashMap<>();
+                                            user.put("uid", uid);
+                                            user.put("userId", userId);
+                                            user.put("firstName", first);
+                                            user.put("lastName", last);
+                                            user.put("middleName", middle);
+                                            user.put("suffix", suffix);
+                                            user.put("birthdate", birthdate);
+                                            user.put("age", age);
+                                            user.put("contact", contact);
+                                            user.put("email", email);
+                                            user.put("username", username);
+                                            user.put("role", role);
+                                            user.put("gender", gender);
+                                            user.put("status", "Active");
+                                            user.put("profileImageUrl", DEFAULT_PROFILE_IMAGE_URL);
+
+                                            db.collection("users").document(uid)
+                                                    .set(user)
+                                                    .addOnSuccessListener(a -> {
+                                                        Toast.makeText(this, "Registered successfully!", Toast.LENGTH_SHORT).show();
+                                                        startActivity(new Intent(this, LoginActivity.class));
+                                                        finish();
+                                                    })
+                                                    .addOnFailureListener(e -> {
+                                                        setLoading(false);
+                                                        Toast.makeText(this,
+                                                                "Error saving user: " + e.getMessage(),
+                                                                Toast.LENGTH_LONG).show();
+                                                    });
+                                        })
+                                        .addOnFailureListener(e -> {
+                                            setLoading(false);
+                                            Toast.makeText(this,
+                                                    "Registration failed: " + e.getMessage(),
+                                                    Toast.LENGTH_LONG).show();
+                                        });
+
                             })
-                            .addOnFailureListener(e ->
-                                    Toast.makeText(this,
-                                            "Error saving user: " + e.getMessage(),
-                                            Toast.LENGTH_LONG).show()
-                            );
+                            .addOnFailureListener(e -> {
+                                setLoading(false);
+                                Toast.makeText(this,
+                                        "Error checking email: " + e.getMessage(),
+                                        Toast.LENGTH_LONG).show();
+                            });
+
                 })
-                .addOnFailureListener(e ->
-                        Toast.makeText(this,
-                                "Registration failed: " + e.getMessage(),
-                                Toast.LENGTH_LONG).show()
-                );
+                .addOnFailureListener(e -> {
+                    setLoading(false);
+                    Toast.makeText(this,
+                            "Error checking username: " + e.getMessage(),
+                            Toast.LENGTH_LONG).show();
+                });
     }
 }

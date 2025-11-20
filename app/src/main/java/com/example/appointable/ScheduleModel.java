@@ -7,12 +7,18 @@ public class ScheduleModel {
     private String time;
     private int sortTimeMinutes;
     private int status = 0;
+    private int dayOfWeek;
 
-    public ScheduleModel(String childName, String service, String time, int sortTimeMinutes) {
+    public ScheduleModel(String childName,
+                         String service,
+                         String time,
+                         int sortTimeMinutes,
+                         int dayOfWeek) {
         this.childName = childName;
         this.service = service;
         this.time = time;
         this.sortTimeMinutes = sortTimeMinutes;
+        this.dayOfWeek = dayOfWeek;
     }
 
     public String getChildName() {
@@ -37,5 +43,9 @@ public class ScheduleModel {
 
     public void setStatus(int status) {
         this.status = status;
+    }
+
+    public int getDayOfWeek() {
+        return dayOfWeek;
     }
 }

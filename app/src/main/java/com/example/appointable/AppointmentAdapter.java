@@ -1,6 +1,5 @@
 package com.example.appointable;
 
-import android.graphics.Color;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -9,89 +8,57 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.example.appointable.R;
+import com.example.appointable.Appointment;
+
 import java.util.List;
 
-public class AppointmentAdapter extends RecyclerView.Adapter<AppointmentAdapter.ViewHolder> {
+public class AppointmentAdapter extends RecyclerView.Adapter<AppointmentAdapter.AppointmentViewHolder> {
 
-    public interface OnAppointmentClickListener {
-        void onAppointmentClick(Appointment appt);
+    private List<Appointment> items;
+
+    public AppointmentAdapter(List<Appointment> items) {
+        this.items = items;
     }
 
-    private List<Appointment> appointmentList;
-    private OnAppointmentClickListener listener;
-
-    public AppointmentAdapter(List<Appointment> appointmentList,
-                              OnAppointmentClickListener listener) {
-        this.appointmentList = appointmentList;
-        this.listener = listener;
+    public void updateList(List<Appointment> newItems) {
+        items.clear();
+        items.addAll(newItems);
+        notifyDataSetChanged();
     }
 
     @NonNull
     @Override
-    public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+    public AppointmentViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         View view = LayoutInflater.from(parent.getContext())
                 .inflate(R.layout.item_appointment, parent, false);
-        return new ViewHolder(view);
+        return new AppointmentViewHolder(view);
     }
 
     @Override
-    public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
-        Appointment appt = appointmentList.get(position);
+    public void onBindViewHolder(@NonNull AppointmentViewHolder holder, int position) {
+        Appointment item = items.get(position);
 
-        holder.childName.setText(appt.getChildName());
-        holder.service.setText(appt.getService());
-        holder.time.setText(appt.getTime());
-        holder.status.setText(appt.getStatus());
-
-        String status = appt.getStatus() != null ? appt.getStatus().toLowerCase().trim() : "";
-        int color;
-
-        switch (status) {
-            case "completed":
-                color = Color.parseColor("#4CAF50");
-                break;
-            case "pending":
-                color = Color.parseColor("#2196F3");
-                break;
-            case "rescheduled":
-                color = Color.parseColor("#FFC107");
-                break;
-            case "cancelled":
-            case "canceled":
-                color = Color.parseColor("#F44336");
-                break;
-            default:
-                color = Color.parseColor("#2196F3");
-                break;
-        }
-
-        if (holder.status.getBackground() instanceof android.graphics.drawable.GradientDrawable) {
-            android.graphics.drawable.GradientDrawable bg =
-                    (android.graphics.drawable.GradientDrawable) holder.status.getBackground().mutate();
-            bg.setColor(color);
-        }
-
-        holder.itemView.setOnClickListener(v -> {
-            if (listener != null) listener.onAppointmentClick(appt);
-        });
+        holder.tvChildName.setText(item.getChildName());
+        holder.tvService.setText(item.getService());
+        holder.tvTime.setText(item.getTime());
+        holder.tvStatus.setText(item.getStatus());
     }
 
     @Override
     public int getItemCount() {
-        return appointmentList.size();
+        return items.size();
     }
 
-    public static class ViewHolder extends RecyclerView.ViewHolder {
+    static class AppointmentViewHolder extends RecyclerView.ViewHolder {
+        TextView tvChildName, tvService, tvTime, tvStatus;
 
-        TextView childName, service, time, status;
-
-        public ViewHolder(@NonNull View itemView) {
+        public AppointmentViewHolder(@NonNull View itemView) {
             super(itemView);
-
-            childName = itemView.findViewById(R.id.tvChildName);
-            service = itemView.findViewById(R.id.tvService);
-            time = itemView.findViewById(R.id.tvTime);
-            status = itemView.findViewById(R.id.tvStatus);
+            tvChildName = itemView.findViewById(R.id.tvChildName);
+            tvService = itemView.findViewById(R.id.tvService);
+            tvTime = itemView.findViewById(R.id.tvTime);
+            tvStatus = itemView.findViewById(R.id.tvStatus);
         }
     }
 }

@@ -12,6 +12,11 @@ import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.firestore.DocumentSnapshot;
+import com.google.firebase.firestore.FirebaseFirestore;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -19,11 +24,18 @@ public class Student_TeacherFragment extends Fragment {
 
     private RecyclerView rvStudents;
     private TextView tvRemainingCount;
-    private List<StudentModel> students;
+
+    private final List<StudentModel> students = new ArrayList<>();
+
+    private FirebaseFirestore db;
+    private FirebaseAuth mAuth;
+
+    private String currentUserRole;
 
     @Nullable
     @Override
-    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container,
+    public View onCreateView(@NonNull LayoutInflater inflater,
+                             @Nullable ViewGroup container,
                              @Nullable Bundle savedInstanceState) {
 
         View view = inflater.inflate(R.layout.fragment_student_teacher, container, false);
@@ -34,24 +46,75 @@ public class Student_TeacherFragment extends Fragment {
         rvStudents.setLayoutManager(new LinearLayoutManager(getContext()));
         rvStudents.setHasFixedSize(true);
 
-        loadDummyData();
+        db = FirebaseFirestore.getInstance();
+        mAuth = FirebaseAuth.getInstance();
 
-        StudentAdapter adapter = new StudentAdapter(students);
-        rvStudents.setAdapter(adapter);
-
-        tvRemainingCount.setText(String.valueOf(students.size()));
+        fetchCurrentUserRoleAndStudents();
 
         return view;
     }
 
-    private void loadDummyData() {
-        students = new ArrayList<>();
+    private void fetchCurrentUserRoleAndStudents() {
+        FirebaseUser user = mAuth.getCurrentUser();
+        if (user == null) return;
 
-        students.add(new StudentModel("2025001", "Anna", "Cruz", "", "", "89", "Active"));
-        students.add(new StudentModel("2025002", "Mark", "Reyes", "", "", "92", "Active"));
-        students.add(new StudentModel("2025003", "Liza", "Gomez", "", "", "75", "Irregular"));
-        students.add(new StudentModel("2025004", "John", "Santos", "", "", "81", "Active"));
-        students.add(new StudentModel("2025005", "Ella", "Ramos", "", "", "95", "Active"));
-        students.add(new StudentModel("2025006", "Paolo", "Dizon", "", "", "70", "Dropped"));
+        db.collection("users")
+                .document(user.getUid())
+                .get()
+                .addOnSuccessListener(doc -> {
+                    if (doc.exists()) {
+                        currentUserRole = doc.getString("role");
+                    }
+                    fetchStudents();
+                })
+                .addOnFailureListener(e -> {
+                    currentUserRole = null;
+                    fetchStudents();
+                });
+    }
+
+    private void fetchStudents() {
+        db.collection("users")
+                .whereEqualTo("role", "Student")
+                .get()
+                .addOnSuccessListener(querySnapshot -> {
+                    students.clear();
+
+                    for (DocumentSnapshot doc : querySnapshot.getDocuments()) {
+
+                        String docId = doc.getId();
+                        String studentNumber = doc.getString("userId"); // your Student #
+                        String firstName = doc.getString("firstName");
+                        String lastName = doc.getString("lastName");
+                        String middleName = doc.getString("middleName");
+                        String suffix = doc.getString("suffix");
+                        String status = doc.getString("status");
+                        String grade = doc.getString("grade"); // latest grade (may be null)
+
+                        if (studentNumber == null) studentNumber = "";
+                        if (firstName == null) firstName = "";
+                        if (lastName == null) lastName = "";
+                        if (middleName == null) middleName = "";
+                        if (suffix == null) suffix = "";
+                        if (status == null) status = "Active";
+                        if (grade == null) grade = "";
+
+                        students.add(new StudentModel(
+                                docId,
+                                studentNumber,
+                                firstName,
+                                lastName,
+                                middleName,
+                                suffix,
+                                grade,
+                                status
+                        ));
+                    }
+
+                    StudentAdapter adapter = new StudentAdapter(students, currentUserRole);
+                    rvStudents.setAdapter(adapter);
+
+                    tvRemainingCount.setText(String.valueOf(students.size()));
+                });
     }
 }
