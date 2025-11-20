@@ -13,7 +13,7 @@
         android:background="#ABB9EE">
 
         <TextView
-            android:id="@+id/goodMorning"
+            android:id="@+id/morningNight"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Good Morning,"
@@ -25,11 +25,11 @@
             android:id="@+id/nameOfUser"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Joshua!"
+            android:text=""
             android:textColor="#212121"
             android:textSize="20sp"
             android:fontFamily="@font/poppins_bold"
-            android:layout_below="@id/goodMorning"
+            android:layout_below="@id/morningNight"
             android:layout_marginTop="4dp" />
 
     </RelativeLayout>
