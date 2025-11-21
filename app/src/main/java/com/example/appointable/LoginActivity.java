@@ -61,6 +61,10 @@ public class LoginActivity extends AppCompatActivity {
         ivTogglePassword = findViewById(R.id.ivTogglePassword);
         rememberMeCheckBox = findViewById(R.id.rememberMeCheckBox);
 
+        //        Clear credentials after log out
+        etEmail.setText("");
+        etPassword.setText("");
+
         boolean isRemembered = sharedPreferences.getBoolean("remember", false);
         if (isRemembered) {
             String savedEmail = sharedPreferences.getString("email", "");

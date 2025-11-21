@@ -2,49 +2,82 @@ package com.example.appointable;
 
 import android.os.Bundle;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
 
+import com.google.android.material.badge.BadgeDrawable;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
-
-import java.util.HashMap;
-import java.util.Map;
 
 public class TeachersMainActivity extends AppCompatActivity {
 
-    BottomNavigationView bottomNavigationView;
-    Map<Integer, Fragment> fragmentMap = new HashMap<>();
+    private BottomNavigationView bottomNavigationView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
         setContentView(R.layout.activity_teacher_main);
 
         bottomNavigationView = findViewById(R.id.bottom_navigation);
 
-        fragmentMap.put(R.id.nav_home, new TeacherHomeFragment());
-        fragmentMap.put(R.id.nav_appointments, new Schedule_TeacherFragment());
-        fragmentMap.put(R.id.nav_students, new Student_TeacherFragment());
-        fragmentMap.put(R.id.nav_messages, new Messages_TeacherFragment());
-        fragmentMap.put(R.id.nav_profile, new Profile_TeacherFragment());
-
-        loadFragment(new TeacherHomeFragment());
-
         bottomNavigationView.setOnItemSelectedListener(item -> {
-            Fragment fragment = fragmentMap.get(item.getItemId());
-            if (fragment != null) {
-                loadFragment(fragment);
-                return true;
+            Fragment selectedFragment = null;
+
+            int id = item.getItemId();
+            if (id == R.id.nav_home) {
+                selectedFragment = new TeacherHomeFragment();
+            } else if (id == R.id.nav_appointments) {
+                selectedFragment = new Schedule_TeacherFragment();
+            } else if (id == R.id.nav_students) {
+                selectedFragment = new Student_TeacherFragment();
+            } else if (id == R.id.nav_messages) {
+                selectedFragment = new Messages_TeacherFragment();
+            } else if (id == R.id.nav_profile) {
+                selectedFragment = new Profile_TeacherFragment();
             }
-            return false;
+
+            if (selectedFragment != null) {
+                getSupportFragmentManager()
+                        .beginTransaction()
+                        .replace(R.id.fragment_container, selectedFragment)
+                        .commit();
+            }
+
+            return true;
         });
+
+        if (savedInstanceState == null) {
+            bottomNavigationView.setSelectedItemId(R.id.nav_home);
+        }
     }
 
-    private void loadFragment(Fragment fragment) {
-        getSupportFragmentManager()
-                .beginTransaction()
-                .replace(R.id.fragment_container, fragment)
-                .commit();
+    public void hideBottomNav() {
+        if (bottomNavigationView != null) {
+            bottomNavigationView.animate()
+                    .translationY(bottomNavigationView.getHeight())
+                    .setDuration(200);
+        }
+    }
+
+    public void showBottomNav() {
+        if (bottomNavigationView != null) {
+            bottomNavigationView.animate()
+                    .translationY(0)
+                    .setDuration(200);
+        }
+    }
+
+    public void updateMessagesBadge(int count) {
+        if (bottomNavigationView == null) return;
+
+        BadgeDrawable badge = bottomNavigationView.getOrCreateBadge(R.id.nav_messages);
+
+        if (count > 0) {
+            badge.setVisible(true);
+            badge.setNumber(count);
+        } else {
+            badge.clearNumber();
+            badge.setVisible(false);
+        }
     }
 }

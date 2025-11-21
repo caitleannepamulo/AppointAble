@@ -2,7 +2,8 @@
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#F4F6FF"
+    android:background="#F7F7F7"
+    android:layout_marginBottom="100dp"
     android:fillViewport="true">
 
     <LinearLayout
@@ -155,7 +156,8 @@
                     android:scaleType="fitCenter"
                     android:background="#FFFFFF"
                     android:padding="12dp"
-                    android:src="@drawable/ic_quote_placeholder" />
+                    android:src="@drawable/ic_quote_placeholder"
+                    />
             </LinearLayout>
 
         </LinearLayout>

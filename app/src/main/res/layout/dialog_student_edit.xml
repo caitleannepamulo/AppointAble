@@ -127,7 +127,12 @@
             android:layout_height="36dp"
             android:background="@drawable/bg_edittext_outline"
             android:paddingLeft="8dp"
-            android:textSize="12sp" />
+            android:textSize="12sp"
+            android:focusable="false"
+            android:focusableInTouchMode="false"
+            android:clickable="false"
+            android:cursorVisible="false"
+            android:inputType="none" />
 
         <LinearLayout
             android:layout_width="match_parent"
