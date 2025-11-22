@@ -14,7 +14,7 @@ import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.example.appointable.AppointmentAdapter;
+import com.example.appointable.adapters.AppointmentAdapter;
 import com.example.appointable.SummaryAdapter;
 import com.example.appointable.Appointment;
 import com.example.appointable.SummaryItem;
