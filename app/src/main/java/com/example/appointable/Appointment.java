@@ -9,8 +9,9 @@ public class Appointment {
     private Calendar date;
     private String status;
 
+
     public Appointment(String childName, String service, String time,
-                       Calendar date, String status) {
+                       Calendar date, String status, String rescheduleComment) {
         this.childName = childName;
         this.service = service;
         this.time = time;

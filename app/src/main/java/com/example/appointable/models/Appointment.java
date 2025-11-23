@@ -12,8 +12,12 @@ public class Appointment {
     private String time;
     private String status;
 
+    private String rescheduleComment;
+
+    // 🔹 REQUIRED empty constructor for Firestore
     public Appointment() {}
 
+    // 🔹 Your main constructor (Firestore uses this OR setters)
     public Appointment(String id, String studentId, String childName,
                        String teacherId, String teacherName,
                        String service, String date, String time,
@@ -30,6 +34,9 @@ public class Appointment {
         this.status = status;
     }
 
+    // -------------------------
+    // 🔹 GETTERS
+    // -------------------------
     public String getId() { return id; }
     public String getStudentId() { return studentId; }
     public String getChildName() { return childName; }
@@ -39,4 +46,21 @@ public class Appointment {
     public String getDate() { return date; }
     public String getTime() { return time; }
     public String getStatus() { return status; }
+    public String getRescheduleComment() { return rescheduleComment; }
+
+    // -------------------------
+    // 🔹 SETTERS (required for Firestore!)
+    // -------------------------
+    public void setId(String id) { this.id = id; }
+    public void setStudentId(String studentId) { this.studentId = studentId; }
+    public void setChildName(String childName) { this.childName = childName; }
+    public void setTeacherId(String teacherId) { this.teacherId = teacherId; }
+    public void setTeacherName(String teacherName) { this.teacherName = teacherName; }
+    public void setService(String service) { this.service = service; }
+    public void setDate(String date) { this.date = date; }
+    public void setTime(String time) { this.time = time; }
+    public void setStatus(String status) { this.status = status; }
+    public void setRescheduleComment(String rescheduleComment) {
+        this.rescheduleComment = rescheduleComment;
+    }
 }
