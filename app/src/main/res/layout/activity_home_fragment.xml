@@ -63,6 +63,7 @@
         android:layout_marginStart="20dp"
         android:visibility="gone"/>
 
+
     <TextView
         android:id="@+id/tvAppointmentIndicators"
         android:layout_width="wrap_content"
@@ -72,6 +73,28 @@
         android:layout_marginStart="20dp"
         android:layout_marginTop="4dp"
         android:textColor="#444444" />
+
+    <TextView
+        android:id="@+id/tvNextLabel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Next Upcoming Appointment"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:layout_marginStart="20dp"
+        android:layout_marginTop="20dp"
+        android:textColor="#000000"
+        android:visibility="gone"/>
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rvNextAppointment"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingLeft="16dp"
+        android:paddingRight="16dp"
+        android:clipToPadding="false"
+        android:visibility="gone"/>
+
 
 
     <androidx.recyclerview.widget.RecyclerView

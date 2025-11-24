@@ -25,7 +25,7 @@ public class ParentsMainActivity extends AppCompatActivity {
         // Correct fragment mapping
         fragmentMap.put(R.id.nav_home, new ParentHomeFragment());
         fragmentMap.put(R.id.nav_appointments, new AppointmentsFragment());
-        fragmentMap.put(R.id.nav_messages, new MessagesFragment());
+        fragmentMap.put(R.id.nav_messages, new ParentMessagesFragment());
         fragmentMap.put(R.id.nav_profile, new ProfileFragment());
 
         // Listener for bottom nav
