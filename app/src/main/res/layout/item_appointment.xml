@@ -3,67 +3,136 @@
     xmlns:card_view="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
+    android:layout_marginHorizontal="8dp"
     android:layout_marginTop="6dp"
     android:layout_marginBottom="6dp"
-    android:layout_marginHorizontal="8dp"
     card_view:cardCornerRadius="14dp"
     card_view:cardElevation="3dp"
     card_view:cardUseCompatPadding="false"
     card_view:cardBackgroundColor="#C5D5EA">
 
     <LinearLayout
+        android:id="@+id/layoutRoot"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
+        android:orientation="vertical"
         android:padding="12dp">
 
+        <!-- FIRST ROW: Name + Service + Options + Arrow -->
         <LinearLayout
-            android:layout_width="0dp"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:orientation="vertical">
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
 
-            <TextView
-                android:id="@+id/tvChildName"
-                android:layout_width="wrap_content"
+            <LinearLayout
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:text="Kevin Tan"
-                android:textSize="16sp"
-                android:textColor="#212121"
-                android:fontFamily="@font/poppins_bold" />
+                android:layout_weight="1"
+                android:orientation="vertical">
 
-            <TextView
-                android:id="@+id/tvService"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Behavioral Therapy"
-                android:textSize="14sp"
-                android:textColor="#333333"
-                android:fontFamily="@font/poppins"
-                android:layout_marginTop="2dp" />
+                <TextView
+                    android:id="@+id/tvTeacherName"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Kevin Tan"
+                    android:textSize="16sp"
+                    android:textColor="#212121"
+                    android:fontFamily="@font/poppins_bold" />
 
-            <TextView
-                android:id="@+id/tvTime"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="8:15 AM"
-                android:textSize="13sp"
-                android:textColor="#212121"
-                android:fontFamily="@font/poppins_medium"
-                android:layout_marginTop="3dp" />
+                <TextView
+                    android:id="@+id/tvService"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Behavioral Therapy"
+                    android:textSize="14sp"
+                    android:textColor="#333333"
+                    android:fontFamily="@font/poppins"
+                    android:layout_marginTop="2dp" />
+            </LinearLayout>
+
+            <ImageView
+                android:id="@+id/btnOptions"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:src="@drawable/ic_more_vert"
+                android:padding="4dp"
+                android:layout_marginEnd="12dp" />
+
+            <ImageView
+                android:id="@+id/imgArrow"
+                android:layout_width="22dp"
+                android:layout_height="22dp"
+                android:src="@drawable/ic_arrow_down"
+                android:padding="2dp" />
         </LinearLayout>
 
-        <TextView
-            android:id="@+id/tvStatus"
-            android:layout_width="wrap_content"
+        <!-- SECOND ROW: Date + Time + Status -->
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Pending"
-            android:textSize="12sp"
-            android:fontFamily="@font/poppins_medium"
-            android:textColor="@android:color/white"
-            android:paddingHorizontal="10dp"
-            android:paddingVertical="4dp"
-            android:background="@drawable/bg_status_pill" />
+            android:orientation="horizontal"
+            android:layout_marginTop="6dp">
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/tvDate"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="11/25/2025"
+                    android:textSize="13sp"
+                    android:fontFamily="@font/poppins_medium"
+                    android:textColor="#212121" />
+
+                <TextView
+                    android:id="@+id/tvTime"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="8:15 AM"
+                    android:textSize="13sp"
+                    android:fontFamily="@font/poppins_medium"
+                    android:textColor="#212121"
+                    android:layout_marginTop="3dp" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/tvStatus"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_status_pill"
+                android:fontFamily="@font/poppins_medium"
+                android:gravity="center"
+                android:paddingHorizontal="10dp"
+                android:paddingVertical="4dp"
+                android:text="Pending"
+                android:textColor="@android:color/white"
+                android:textSize="12sp" />
+        </LinearLayout>
+
+        <!-- EXPANDABLE DETAILS SECTION -->
+        <LinearLayout
+            android:id="@+id/layoutDetails"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone"
+            android:layout_marginTop="10dp">
+
+            <TextView
+                android:id="@+id/tvComment"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Comment: None"
+                android:textColor="#212121"
+                android:fontFamily="@font/poppins_medium"
+                android:textSize="13sp"
+                android:layout_marginTop="4dp"/>
+        </LinearLayout>
 
     </LinearLayout>
 

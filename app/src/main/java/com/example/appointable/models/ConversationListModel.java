@@ -1,4 +1,4 @@
-package com.example.appointable;
+package com.example.appointable.models;
 
 public class TeacherMessageModel {
 

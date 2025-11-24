@@ -14,10 +14,8 @@ import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.example.appointable.AppointmentAdapter;
-import com.example.appointable.SummaryAdapter;
-import com.example.appointable.Appointment;
-import com.example.appointable.SummaryItem;
+import com.example.appointable.adapters.AppointmentAdapter;
+import com.example.appointable.models.Appointment;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.DocumentSnapshot;
@@ -33,20 +31,16 @@ import java.util.Random;
 public class TeacherHomeFragment extends Fragment {
 
     private TextView tvGreeting, tvNameOfUser, tvTodayTitle;
-    private ImageView ivTodayCalendar, ivSummaryIcon, ivQuoteImage;
+    private ImageView ivTodayCalendar, ivQuoteImage;
 
-    private RecyclerView rvToday, rvSummary;
+    private RecyclerView rvToday;
 
     private FirebaseAuth mAuth;
     private FirebaseFirestore db;
 
     private AppointmentAdapter appointmentAdapter;
-    private SummaryAdapter summaryAdapter;
 
     private final List<Appointment> allAppointments = new ArrayList<>();
-    private final List<SummaryItem> summaryItems = new ArrayList<>();
-
-    private boolean isAscending = true;
 
     private final SimpleDateFormat dateFormat =
             new SimpleDateFormat("MMM dd, yyyy", Locale.getDefault());
@@ -72,17 +66,14 @@ public class TeacherHomeFragment extends Fragment {
         tvTodayTitle = view.findViewById(R.id.tvTodayTitle);
 
         ivTodayCalendar = view.findViewById(R.id.ivTodayCalendar);
-        ivSummaryIcon = view.findViewById(R.id.ivSummaryIcon);
         ivQuoteImage = view.findViewById(R.id.ivQuoteImage);
 
         rvToday = view.findViewById(R.id.rvToday);
-        rvSummary = view.findViewById(R.id.rvSummary);
 
         setupGreeting();
         setupRecyclerViews();
-        generateDummyData();
+        loadTeacherAppointments();
         setupCalendarPicker();
-        setupSummarySorting();
         showRandomQuoteImage();
     }
 
@@ -108,66 +99,73 @@ public class TeacherHomeFragment extends Fragment {
                 .get()
                 .addOnSuccessListener(snapshot -> {
                     String firstName = snapshot.getString("firstName");
-
-                    if (firstName != null && !firstName.isEmpty()) {
-                        String formatted = firstName.substring(0, 1).toUpperCase() +
-                                firstName.substring(1).toLowerCase();
-                        tvNameOfUser.setText(formatted + "!");
+                    if (firstName != null) {
+                        tvNameOfUser.setText(firstName + "!");
                     }
-                })
-                .addOnFailureListener(e ->
-                        tvNameOfUser.setText("Unknown User!"));
+                });
     }
 
     private void setupRecyclerViews() {
         rvToday.setLayoutManager(new LinearLayoutManager(getContext()));
-        appointmentAdapter = new AppointmentAdapter(new ArrayList<>());
+
+        appointmentAdapter = new AppointmentAdapter(
+                new ArrayList<>(),
+                new AppointmentAdapter.OnAppointmentActionListener() {
+                    @Override public void onCancel(Appointment appt) {}
+                    @Override public void onReschedule(Appointment appt) {}
+                    @Override public void onMoreOptions(Appointment appt, View anchor) {}
+                }
+        );
+
         rvToday.setAdapter(appointmentAdapter);
-
-        rvSummary.setLayoutManager(new LinearLayoutManager(getContext()));
-        summaryAdapter = new SummaryAdapter(new ArrayList<>());
-        rvSummary.setAdapter(summaryAdapter);
     }
 
-    private void generateDummyData() {
-        Calendar today = Calendar.getInstance();
+    private void loadTeacherAppointments() {
 
-        allAppointments.add(new Appointment("Kevin Tan", "Behavioral Therapy", "8:15 AM", today, "Pending"));
-        allAppointments.add(new Appointment("Joshua Pre", "Speech Therapy", "9:00 AM", today, "Pending"));
+        FirebaseUser user = mAuth.getCurrentUser();
+        if (user == null) return;
 
-        summaryItems.add(new SummaryItem("Kevin Tan", "Behavior Therapy", 22));
-        summaryItems.add(new SummaryItem("Joshua Pre", "Speech Therapy", 37));
+        String teacherId = user.getUid();
 
-        appointmentAdapter.updateList(allAppointments);
-        summaryAdapter.updateItems(summaryItems);
+        db.collection("appointments")
+                .whereEqualTo("teacherId", teacherId)
+                .get()
+                .addOnSuccessListener(query -> {
 
-        tvTodayTitle.setText(dateFormat.format(today.getTime()));
-    }
+                    allAppointments.clear();
 
-    private void setupCalendarPicker() {
-        ivTodayCalendar.setOnClickListener(v -> {
-            Calendar now = Calendar.getInstance();
+                    for (DocumentSnapshot doc : query) {
+                        Appointment appt = doc.toObject(Appointment.class);
+                        if (appt != null) allAppointments.add(appt);
+                    }
 
-            new DatePickerDialog(getContext(), (view, year, month, day) -> {
-                Calendar selected = Calendar.getInstance();
-                selected.set(year, month, day);
-
-                tvTodayTitle.setText(dateFormat.format(selected.getTime()));
-
-                filterAppointments(selected);
-
-            }, now.get(Calendar.YEAR), now.get(Calendar.MONTH), now.get(Calendar.DAY_OF_MONTH)).show();
-        });
+                    Calendar today = Calendar.getInstance();
+                    filterAppointments(today);
+                });
     }
 
     private void filterAppointments(Calendar selected) {
+
         List<Appointment> filtered = new ArrayList<>();
 
         for (Appointment a : allAppointments) {
-            if (sameDay(a.getDate(), selected)) filtered.add(a);
+            if (a.getDate() == null) continue;
+
+            String[] parts = a.getDate().split("/");
+            if (parts.length != 3) continue;
+
+            int m = Integer.parseInt(parts[0]) - 1;
+            int d = Integer.parseInt(parts[1]);
+            int y = Integer.parseInt(parts[2]);
+
+            Calendar apptDate = Calendar.getInstance();
+            apptDate.set(y, m, d);
+
+            if (sameDay(apptDate, selected)) filtered.add(a);
         }
 
         appointmentAdapter.updateList(filtered);
+        tvTodayTitle.setText(dateFormat.format(selected.getTime()));
     }
 
     private boolean sameDay(Calendar c1, Calendar c2) {
@@ -176,33 +174,25 @@ public class TeacherHomeFragment extends Fragment {
                 c1.get(Calendar.DAY_OF_MONTH) == c2.get(Calendar.DAY_OF_MONTH);
     }
 
-    private void setupSummarySorting() {
-        ivSummaryIcon.setOnClickListener(v -> {
-            isAscending = !isAscending;
-
-            summaryAdapter.sortByProgress(isAscending);
-            ivSummaryIcon.setRotation(isAscending ? 0f : 180f);
+    private void setupCalendarPicker() {
+        ivTodayCalendar.setOnClickListener(v -> {
+            Calendar now = Calendar.getInstance();
+            new DatePickerDialog(getContext(), (view, y, m, d) -> {
+                Calendar selected = Calendar.getInstance();
+                selected.set(y, m, d);
+                filterAppointments(selected);
+            }, now.get(Calendar.YEAR), now.get(Calendar.MONTH), now.get(Calendar.DAY_OF_MONTH)).show();
         });
     }
 
     private void showRandomQuoteImage() {
         int[] images = {
-                R.drawable.pic1,
-                R.drawable.pic2,
-                R.drawable.pic3,
-                R.drawable.pic4,
-                R.drawable.pic5,
-                R.drawable.pic6,
-                R.drawable.pic7,
-                R.drawable.pic8,
-                R.drawable.pic9,
-                R.drawable.pic10,
-                R.drawable.pic11,
-                R.drawable.pic12
+                R.drawable.pic1, R.drawable.pic2, R.drawable.pic3,
+                R.drawable.pic4, R.drawable.pic5, R.drawable.pic6,
+                R.drawable.pic7, R.drawable.pic8, R.drawable.pic9,
+                R.drawable.pic10, R.drawable.pic11, R.drawable.pic12
         };
 
-        ivQuoteImage.setImageResource(
-                images[new Random().nextInt(images.length)]
-        );
+        ivQuoteImage.setImageResource(images[new Random().nextInt(images.length)]);
     }
 }

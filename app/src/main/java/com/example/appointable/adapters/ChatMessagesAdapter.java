@@ -1,4 +1,4 @@
-package com.example.appointable;
+package com.example.appointable.adapters;
 
 import android.view.LayoutInflater;
 import android.view.View;
@@ -10,6 +10,8 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
+import com.example.appointable.models.ChatMessageModel;
+import com.example.appointable.R;
 
 import java.util.List;
 

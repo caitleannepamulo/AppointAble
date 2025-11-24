@@ -18,6 +18,9 @@ import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.example.appointable.adapters.TeacherMessagesAdapter;
+import com.example.appointable.adapters.UserSearchAdapter;
+import com.example.appointable.models.TeacherMessageModel;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.firebase.Timestamp;
 import com.google.firebase.auth.FirebaseAuth;
