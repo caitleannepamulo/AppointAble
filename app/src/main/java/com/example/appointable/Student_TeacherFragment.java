@@ -16,6 +16,7 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.Query;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -74,9 +75,20 @@ public class Student_TeacherFragment extends Fragment {
     }
 
     private void fetchStudents() {
-        db.collection("users")
-                .whereEqualTo("role", "Student")
-                .get()
+        FirebaseUser user = mAuth.getCurrentUser();
+        if (user == null) return;
+
+        String currentUserUid = user.getUid();
+
+        Query query = db.collection("users")
+                .whereEqualTo("role", "Student");
+
+        if (currentUserRole == null ||
+                !currentUserRole.equals("Sped Coordinator")) {
+            query = query.whereEqualTo("assignedTeacherId", currentUserUid);
+        }
+
+        query.get()
                 .addOnSuccessListener(querySnapshot -> {
                     students.clear();
 

@@ -3,7 +3,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="#F7F7F7"
-    android:layout_marginBottom="100dp"
+    android:layout_marginBottom="80dp"
     android:fillViewport="true">
 
     <LinearLayout
@@ -51,7 +51,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:background="#6B8DE3"
+                android:background="@drawable/bg_rounded_blue"
                 android:padding="8dp"
                 android:layout_marginTop="16dp">
 
@@ -82,7 +82,7 @@
                     android:id="@+id/rvToday"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:background="#FFFFFF"
+                    android:background="@drawable/bg_rounded_white"
                     android:padding="6dp"
                     android:layout_marginTop="8dp" />
 
@@ -93,7 +93,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:background="#6B8DE3"
+                android:background="@drawable/bg_rounded_blue"
                 android:padding="8dp"
                 android:layout_marginTop="16dp">
 
@@ -124,7 +124,7 @@
                     android:id="@+id/rvSummary"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:background="#FFFFFF"
+                    android:background="@drawable/bg_rounded_white"
                     android:padding="6dp"
                     android:layout_marginTop="8dp" />
 
@@ -134,7 +134,7 @@
                 android:id="@+id/cardQuoteOuter"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:background="#6B8DE3"
+                android:background="@drawable/bg_rounded_blue"
                 android:padding="8dp"
                 android:layout_marginTop="16dp"
                 android:orientation="vertical">
@@ -156,8 +156,9 @@
                     android:scaleType="fitCenter"
                     android:background="#FFFFFF"
                     android:padding="12dp"
-                    android:src="@drawable/ic_quote_placeholder"
-                    />
+                    android:src="@drawable/ic_quote_placeholder" />
+
+
             </LinearLayout>
 
         </LinearLayout>

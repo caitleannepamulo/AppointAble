@@ -2,4 +2,9 @@
 <resources>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+    <color name="dayUnselectedText">#000000</color>
+    <color name="daySelectedText">#0A3AA6</color>
+    <color name="daySelectedBg">#E0ECFF</color>
+    <color name="dayUnselectedBg">#00000000</color>
+
 </resources>

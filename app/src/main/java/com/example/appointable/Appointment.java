@@ -1,26 +1,66 @@
 package com.example.appointable;
 
-import java.util.Calendar;
-
 public class Appointment {
+
+    private String id;
+    private String studentId;
     private String childName;
+    private String teacherId;
+    private String teacherName;
     private String service;
+    private String date;
     private String time;
-    private Calendar date;
     private String status;
 
-    public Appointment(String childName, String service, String time,
-                       Calendar date, String status) {
+    private String rescheduleComment;
+
+    // 🔹 REQUIRED empty constructor for Firestore
+    public Appointment() {}
+
+    // 🔹 Your main constructor (Firestore uses this OR setters)
+    public Appointment(String id, String studentId, String childName,
+                       String teacherId, String teacherName,
+                       String service, String date, String time,
+                       String status) {
+
+        this.id = id;
+        this.studentId = studentId;
         this.childName = childName;
+        this.teacherId = teacherId;
+        this.teacherName = teacherName;
         this.service = service;
-        this.time = time;
         this.date = date;
+        this.time = time;
         this.status = status;
     }
 
+    // -------------------------
+    // 🔹 GETTERS
+    // -------------------------
+    public String getId() { return id; }
+    public String getStudentId() { return studentId; }
     public String getChildName() { return childName; }
+    public String getTeacherId() { return teacherId; }
+    public String getTeacherName() { return teacherName; }
     public String getService() { return service; }
+    public String getDate() { return date; }
     public String getTime() { return time; }
-    public Calendar getDate() { return date; }
     public String getStatus() { return status; }
+    public String getRescheduleComment() { return rescheduleComment; }
+
+    // -------------------------
+    // 🔹 SETTERS (required for Firestore!)
+    // -------------------------
+    public void setId(String id) { this.id = id; }
+    public void setStudentId(String studentId) { this.studentId = studentId; }
+    public void setChildName(String childName) { this.childName = childName; }
+    public void setTeacherId(String teacherId) { this.teacherId = teacherId; }
+    public void setTeacherName(String teacherName) { this.teacherName = teacherName; }
+    public void setService(String service) { this.service = service; }
+    public void setDate(String date) { this.date = date; }
+    public void setTime(String time) { this.time = time; }
+    public void setStatus(String status) { this.status = status; }
+    public void setRescheduleComment(String rescheduleComment) {
+        this.rescheduleComment = rescheduleComment;
+    }
 }

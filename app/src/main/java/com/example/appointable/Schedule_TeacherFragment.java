@@ -9,6 +9,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -17,21 +18,35 @@ import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.google.android.gms.tasks.Task;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.QueryDocumentSnapshot;
+import com.google.firebase.firestore.QuerySnapshot;
+
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
 public class Schedule_TeacherFragment extends Fragment {
 
+    private static final int STATUS_ACCEPTED = 0;
+    private static final int STATUS_COMPLETED = 1;
+    private static final int STATUS_CANCELED = 2;
+
     private RecyclerView rvAllAppointments;
-    private TextView tvRemainingCount, tvCompletedCount;
+    private TextView tvRemainingCount, tvCompletedCount, tvCanceledCount;
     private ImageView ivSort;
-    private CardView cardRemainingAppointments, cardCompletedAppointments;
+    private CardView cardRemainingAppointments, cardCompletedAppointments, cardCanceledAppointments;
     private TextView tvMonday, tvTuesday, tvWednesday, tvThursday, tvFriday, tvSaturday, tvSunday;
+
     private final List<ScheduleModel> weekAppointments = new ArrayList<>();
     private final List<ScheduleModel> workingAppointments = new ArrayList<>();
     private final List<ScheduleModel> displayedAppointments = new ArrayList<>();
@@ -40,15 +55,24 @@ public class Schedule_TeacherFragment extends Fragment {
     private final int pageSize = 10;
     private boolean isLoading = false;
     private boolean isAscending = true;
-    private int statusFilter = 0;
-    private int selectedDay = 0;
+
+    // filters
+    private int statusFilter = STATUS_ACCEPTED; // 0 = accepted, 1 = completed, 2 = canceled
+    private int selectedDay = 0;               // 0 = none, 1..7 = Mon..Sun
     private int weekOffset = 0;
+
+    // current visible week (for filtering)
+    private int currentWeekYear;
+    private int currentWeekOfYear;
+
     private GestureDetector gestureDetector;
     private static final int SWIPE_THRESHOLD = 100;
     private static final int SWIPE_VELOCITY_THRESHOLD = 100;
 
-    public Schedule_TeacherFragment() {
-    }
+    private FirebaseAuth mAuth;
+    private FirebaseFirestore db;
+
+    public Schedule_TeacherFragment() {}
 
     @Nullable
     @Override
@@ -58,12 +82,19 @@ public class Schedule_TeacherFragment extends Fragment {
 
         View view = inflater.inflate(R.layout.fragment_schedule_teacher, container, false);
 
+        mAuth = FirebaseAuth.getInstance();
+        db = FirebaseFirestore.getInstance();
+
         tvRemainingCount = view.findViewById(R.id.tvRemainingCount);
         tvCompletedCount = view.findViewById(R.id.tvCompletedCount);
+        tvCanceledCount = view.findViewById(R.id.tvCanceledCount);
+
         rvAllAppointments = view.findViewById(R.id.rvAllAppointments);
         ivSort = view.findViewById(R.id.ivSort);
+
         cardRemainingAppointments = view.findViewById(R.id.cardRemainingAppointments);
         cardCompletedAppointments = view.findViewById(R.id.cardCompletedAppointments);
+        cardCanceledAppointments = view.findViewById(R.id.cardCanceledAppointments);
 
         tvMonday = view.findViewById(R.id.tvMonday);
         tvTuesday = view.findViewById(R.id.tvTuesday);
@@ -73,20 +104,140 @@ public class Schedule_TeacherFragment extends Fragment {
         tvSaturday = view.findViewById(R.id.tvSaturday);
         tvSunday = view.findViewById(R.id.tvSunday);
 
-        setDummyWeekAppointments();
-        setStatsFromData();
         setupRecyclerView();
         setupSortButton();
         setupFilterCards();
         setupDayClickListeners();
+        setupSwipeGesture(view);
 
         setWeekDayLabels();
-        autoSelectToday();
+        autoSelectToday(); // will highlight and filter for current week only
 
-        setupSwipeGesture(view);
+        loadAppointmentsFromFirestore();
 
         return view;
     }
+
+    // ------------------ Firestore load ------------------
+
+    private void loadAppointmentsFromFirestore() {
+        FirebaseUser user = mAuth.getCurrentUser();
+        if (user == null) {
+            Toast.makeText(getContext(), "No user logged in.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        String teacherId = user.getUid();
+
+        db.collection("appointments")
+                .whereEqualTo("teacherId", teacherId)
+                .get()
+                .addOnCompleteListener(this::onAppointmentsLoaded);
+    }
+
+    private void onAppointmentsLoaded(@NonNull Task<QuerySnapshot> task) {
+        if (!task.isSuccessful()) {
+            if (getContext() != null) {
+                Toast.makeText(getContext(),
+                        "Failed to load appointments.",
+                        Toast.LENGTH_SHORT).show();
+            }
+            return;
+        }
+
+        weekAppointments.clear();
+
+        SimpleDateFormat dateFormat = new SimpleDateFormat("MM/dd/yyyy", Locale.getDefault());
+
+        for (QueryDocumentSnapshot doc : task.getResult()) {
+            String childName = doc.getString("childName");
+            String service = doc.getString("service");
+            String timeStr = doc.getString("time");
+            String dateStr = doc.getString("date");
+            String statusStr = doc.getString("status");
+            String docId = doc.getId();
+
+            // ---- STATUS MAPPING FIX ----
+            if (statusStr == null) {
+                // no status → skip
+                continue;
+            }
+
+            int status;
+            if (statusStr.equalsIgnoreCase("Completed")) {
+                status = STATUS_COMPLETED;
+            } else if (statusStr.equalsIgnoreCase("Canceled")
+                    || statusStr.equalsIgnoreCase("Cancelled")) {
+                status = STATUS_CANCELED;
+            } else if (statusStr.equalsIgnoreCase("Accepted")
+                    || statusStr.equalsIgnoreCase("Rescheduled")) {
+                // Rescheduled is counted as remaining/accepted
+                status = STATUS_ACCEPTED;
+            } else {
+                // anything else like "Pending", "Pending Fetching", etc. → skip
+                continue;
+            }
+            // ----------------------------
+
+            int sortMinutes = parseTimeToMinutes(timeStr);
+            int dayOfWeek = 0;
+            int weekYear = 0;
+            int weekOfYear = 0;
+
+            if (dateStr != null && !dateStr.isEmpty()) {
+                try {
+                    Date date = dateFormat.parse(dateStr);
+                    if (date != null) {
+                        Calendar cal = Calendar.getInstance();
+                        cal.setTime(date);
+                        dayOfWeek = mapCalendarDayToCustom(cal.get(Calendar.DAY_OF_WEEK));
+                        weekYear = cal.get(Calendar.YEAR);
+                        weekOfYear = cal.get(Calendar.WEEK_OF_YEAR);
+                    }
+                } catch (ParseException e) {
+                    e.printStackTrace();
+                }
+            }
+
+            ScheduleModel m = new ScheduleModel(
+                    childName != null ? childName : "",
+                    service != null ? service : "",
+                    timeStr != null ? timeStr : "",
+                    sortMinutes,
+                    dayOfWeek,
+                    docId,
+                    dateStr != null ? dateStr : "",
+                    weekYear,
+                    weekOfYear
+            );
+            m.setStatus(status);
+
+            weekAppointments.add(m);
+        }
+
+        setStatsFromData();
+        setWeekDayLabels();
+        autoSelectToday();  // re-apply now that data exists
+    }
+
+    private int parseTimeToMinutes(String timeStr) {
+        if (timeStr == null) return 0;
+        try {
+            SimpleDateFormat timeFormat = new SimpleDateFormat("h:mm a", Locale.getDefault());
+            Date date = timeFormat.parse(timeStr);
+            if (date == null) return 0;
+            Calendar cal = Calendar.getInstance();
+            cal.setTime(date);
+            int hour = cal.get(Calendar.HOUR_OF_DAY);
+            int minute = cal.get(Calendar.MINUTE);
+            return hour * 60 + minute;
+        } catch (ParseException e) {
+            e.printStackTrace();
+            return 0;
+        }
+    }
+
+    // ------------------ swipe / week navigation ------------------
 
     private void setupSwipeGesture(View rootView) {
         gestureDetector = new GestureDetector(getContext(), new GestureDetector.SimpleOnGestureListener() {
@@ -125,24 +276,38 @@ public class Schedule_TeacherFragment extends Fragment {
     private void changeWeek(int delta) {
         weekOffset += delta;
 
+        // reset day selection
         selectedDay = 0;
         clearDayHighlights();
 
-        setWeekDayLabels();
+        setWeekDayLabels(); // this also updates currentWeekYear/currentWeekOfYear
 
         if (weekOffset == 0) {
+            // current week → auto-select today again
             autoSelectToday();
         } else {
-            applyFilterSortAndReset();
+            // other weeks → do NOT show any appointments until user taps a day
+            displayedAppointments.clear();
+            adapter.notifyDataSetChanged();
         }
     }
+
+    // ------------------ weekday labels / current week ------------------
 
     private void setWeekDayLabels() {
         Calendar realToday = Calendar.getInstance();
 
-        Calendar monday = Calendar.getInstance();
-        monday.set(Calendar.DAY_OF_WEEK, Calendar.MONDAY);
+        // today mapped to our Mon=1..Sun=7
+        int todayMapped = mapCalendarDayToCustom(realToday.get(Calendar.DAY_OF_WEEK));
+
+        // Monday of "current" visible week
+        Calendar monday = (Calendar) realToday.clone();
+        monday.add(Calendar.DAY_OF_MONTH, 1 - todayMapped);
         monday.add(Calendar.WEEK_OF_YEAR, weekOffset);
+
+        // store current visible week for filtering
+        currentWeekYear = monday.get(Calendar.YEAR);
+        currentWeekOfYear = monday.get(Calendar.WEEK_OF_YEAR);
 
         Calendar tuesday = (Calendar) monday.clone();
         tuesday.add(Calendar.DAY_OF_MONTH, 1);
@@ -164,23 +329,20 @@ public class Schedule_TeacherFragment extends Fragment {
 
         SimpleDateFormat dateFormat = new SimpleDateFormat("MMM d", Locale.getDefault());
 
-        setDayLabel(tvMonday, "Mon", monday, realToday, dateFormat, 1);
-        setDayLabel(tvTuesday, "Tue", tuesday, realToday, dateFormat, 2);
-        setDayLabel(tvWednesday, "Wed", wednesday, realToday, dateFormat, 3);
-        setDayLabel(tvThursday, "Thu", thursday, realToday, dateFormat, 4);
-        setDayLabel(tvFriday, "Fri", friday, realToday, dateFormat, 5);
-        setDayLabel(tvSaturday, "Sat", saturday, realToday, dateFormat, 6);
-        setDayLabel(tvSunday, "Sun", sunday, realToday, dateFormat, 7);
+        setDayLabel(tvMonday, "Mon", monday, realToday, dateFormat);
+        setDayLabel(tvTuesday, "Tue", tuesday, realToday, dateFormat);
+        setDayLabel(tvWednesday, "Wed", wednesday, realToday, dateFormat);
+        setDayLabel(tvThursday, "Thu", thursday, realToday, dateFormat);
+        setDayLabel(tvFriday, "Fri", friday, realToday, dateFormat);
+        setDayLabel(tvSaturday, "Sat", saturday, realToday, dateFormat);
+        setDayLabel(tvSunday, "Sun", sunday, realToday, dateFormat);
     }
 
     private void setDayLabel(TextView tv,
                              String dayShortName,
                              Calendar dayCal,
                              Calendar realToday,
-                             SimpleDateFormat dateFormat,
-                             int dayOfWeek) {
-
-        int countForDay = getAppointmentsCountForDay(dayOfWeek);
+                             SimpleDateFormat dateFormat) {
 
         String dateText;
         if (isSameDay(dayCal, realToday) && weekOffset == 0) {
@@ -189,17 +351,7 @@ public class Schedule_TeacherFragment extends Fragment {
             dateText = dateFormat.format(dayCal.getTime());
         }
 
-        tv.setText(dayShortName + " (" + countForDay + ")\n" + dateText);
-    }
-
-    private int getAppointmentsCountForDay(int dayOfWeek) {
-        int count = 0;
-        for (ScheduleModel m : weekAppointments) {
-            if (m.getDayOfWeek() == dayOfWeek) {
-                count++;
-            }
-        }
-        return count;
+        tv.setText(dayShortName + "\n" + dateText);
     }
 
     private boolean isSameDay(Calendar c1, Calendar c2) {
@@ -215,6 +367,8 @@ public class Schedule_TeacherFragment extends Fragment {
         Calendar today = Calendar.getInstance();
         int mapped = mapCalendarDayToCustom(today.get(Calendar.DAY_OF_WEEK));
         selectedDay = mapped;
+
+        statusFilter = STATUS_ACCEPTED;
 
         applyFilterSortAndReset();
 
@@ -264,74 +418,43 @@ public class Schedule_TeacherFragment extends Fragment {
         }
     }
 
-    private void setDummyWeekAppointments() {
-        weekAppointments.clear();
-
-        weekAppointments.add(new ScheduleModel("Joshua Pre", "Speech Therapy", "9:00 AM", 9 * 60, 1));
-        weekAppointments.add(new ScheduleModel("Joshua Pre", "Speech Therapy", "11:00 AM", 11 * 60, 1));
-
-        weekAppointments.add(new ScheduleModel("Kevin Santos", "Behavioral Therapy", "4:00 PM", 16 * 60, 2));
-
-        weekAppointments.add(new ScheduleModel("Maria Lois", "Occupational Therapy", "3:30 PM", 15 * 60 + 30, 3));
-
-        weekAppointments.add(new ScheduleModel("Joshua Pre", "Speech Therapy", "2:00 PM", 14 * 60, 4));
-
-        ScheduleModel done1 = new ScheduleModel("Ana Cruz", "Speech Therapy", "8:00 AM", 8 * 60, 5);
-        done1.setStatus(1);
-        weekAppointments.add(done1);
-
-        ScheduleModel done2 = new ScheduleModel("John Lim", "Occupational Therapy", "10:30 AM", 10 * 60 + 30, 6);
-        done2.setStatus(1);
-        weekAppointments.add(done2);
-
-        ScheduleModel cancelled = new ScheduleModel("Ella Mae", "Speech Therapy", "5:30 PM", 17 * 60 + 30, 7);
-        cancelled.setStatus(2);
-        weekAppointments.add(cancelled);
-    }
+    // ------------------ stats ------------------
 
     private void setStatsFromData() {
-        int remaining = 0;
+        int accepted = 0;
         int completed = 0;
+        int canceled = 0;
 
         for (ScheduleModel m : weekAppointments) {
-            if (m.getStatus() == 1) {
+            if (m.getStatus() == STATUS_COMPLETED) {
                 completed++;
-            } else if (m.getStatus() == 0) {
-                remaining++;
+            } else if (m.getStatus() == STATUS_CANCELED) {
+                canceled++;
+            } else if (m.getStatus() == STATUS_ACCEPTED) {
+                accepted++;
             }
         }
 
-        tvRemainingCount.setText(String.valueOf(remaining));
+        tvRemainingCount.setText(String.valueOf(accepted));
         tvCompletedCount.setText(String.valueOf(completed));
+        tvCanceledCount.setText(String.valueOf(canceled));
     }
+
+    // ------------------ recycler / filters ------------------
 
     private void setupRecyclerView() {
         LinearLayoutManager layoutManager = new LinearLayoutManager(getContext());
         rvAllAppointments.setLayoutManager(layoutManager);
 
-        adapter = new ScheduleAdapter(displayedAppointments);
-        rvAllAppointments.setAdapter(adapter);
-
-        applyFilterSortAndReset();
-
-        rvAllAppointments.addOnScrollListener(new RecyclerView.OnScrollListener() {
-            @Override
-            public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
-                super.onScrolled(recyclerView, dx, dy);
-
-                if (dy <= 0) return;
-
-                int visibleItemCount = layoutManager.getChildCount();
-                int totalItemCount = layoutManager.getItemCount();
-                int firstVisibleItemPosition = layoutManager.findFirstVisibleItemPosition();
-
-                if (!isLoading &&
-                        (visibleItemCount + firstVisibleItemPosition) >= totalItemCount &&
-                        currentIndex < workingAppointments.size()) {
-                    loadNextPage();
+        adapter = new ScheduleAdapter(
+                displayedAppointments,
+                () -> {
+                    setStatsFromData();
+                    applyFilterSortAndReset();
                 }
-            }
-        });
+        );
+
+        rvAllAppointments.setAdapter(adapter);
     }
 
     private void setupSortButton() {
@@ -343,55 +466,77 @@ public class Schedule_TeacherFragment extends Fragment {
 
     private void setupFilterCards() {
         cardRemainingAppointments.setOnClickListener(v -> {
-            statusFilter = 0;
-            applyFilterSortAndReset();
+            statusFilter = STATUS_ACCEPTED;
+            selectedDay = 0;
+            clearDayHighlights();
+            // no day selected → clear list until user taps a day
+            displayedAppointments.clear();
+            adapter.notifyDataSetChanged();
         });
 
         cardCompletedAppointments.setOnClickListener(v -> {
-            statusFilter = 1;
-            applyFilterSortAndReset();
+            statusFilter = STATUS_COMPLETED;
+            selectedDay = 0;
+            clearDayHighlights();
+            displayedAppointments.clear();
+            adapter.notifyDataSetChanged();
+        });
+
+        cardCanceledAppointments.setOnClickListener(v -> {
+            statusFilter = STATUS_CANCELED;
+            selectedDay = 0;
+            clearDayHighlights();
+            displayedAppointments.clear();
+            adapter.notifyDataSetChanged();
         });
     }
 
     private void setupDayClickListeners() {
         tvMonday.setOnClickListener(v -> {
             selectedDay = 1;
+            statusFilter = STATUS_ACCEPTED;
             applyFilterSortAndReset();
             highlightSelectedDay(tvMonday);
         });
 
         tvTuesday.setOnClickListener(v -> {
             selectedDay = 2;
+            statusFilter = STATUS_ACCEPTED;
             applyFilterSortAndReset();
             highlightSelectedDay(tvTuesday);
         });
 
         tvWednesday.setOnClickListener(v -> {
             selectedDay = 3;
+            statusFilter = STATUS_ACCEPTED;
             applyFilterSortAndReset();
             highlightSelectedDay(tvWednesday);
         });
 
         tvThursday.setOnClickListener(v -> {
             selectedDay = 4;
+            statusFilter = STATUS_ACCEPTED;
             applyFilterSortAndReset();
             highlightSelectedDay(tvThursday);
         });
 
         tvFriday.setOnClickListener(v -> {
             selectedDay = 5;
+            statusFilter = STATUS_ACCEPTED;
             applyFilterSortAndReset();
             highlightSelectedDay(tvFriday);
         });
 
         tvSaturday.setOnClickListener(v -> {
             selectedDay = 6;
+            statusFilter = STATUS_ACCEPTED;
             applyFilterSortAndReset();
             highlightSelectedDay(tvSaturday);
         });
 
         tvSunday.setOnClickListener(v -> {
             selectedDay = 7;
+            statusFilter = STATUS_ACCEPTED;
             applyFilterSortAndReset();
             highlightSelectedDay(tvSunday);
         });
@@ -404,7 +549,7 @@ public class Schedule_TeacherFragment extends Fragment {
         };
 
         for (TextView tv : all) {
-            tv.setBackgroundColor(Color.TRANSPARENT);
+            tv.setBackground(null);
             tv.setTextColor(Color.BLACK);
             tv.setTextSize(11f);
             tv.setTypeface(null, android.graphics.Typeface.NORMAL);
@@ -413,10 +558,9 @@ public class Schedule_TeacherFragment extends Fragment {
 
     private void highlightSelectedDay(TextView selected) {
         clearDayHighlights();
-
-        selected.setBackgroundColor(Color.parseColor("#E0ECFF")); // light blue
-        selected.setTextColor(Color.parseColor("#0A3AA6"));
-        selected.setTextSize(12f);
+        selected.setBackgroundResource(R.drawable.bg_day_select);
+        selected.setTextColor(Color.WHITE);
+        selected.setTextSize(13f);
         selected.setTypeface(null, android.graphics.Typeface.BOLD);
     }
 
@@ -425,14 +569,29 @@ public class Schedule_TeacherFragment extends Fragment {
 
         for (ScheduleModel m : weekAppointments) {
 
-            boolean matchesStatus =
-                    (statusFilter == 0 && m.getStatus() == 0) ||
-                            (statusFilter == 1 && m.getStatus() == 1);
+            boolean matchesStatus = false;
+            switch (statusFilter) {
+                case STATUS_ACCEPTED:
+                    matchesStatus = (m.getStatus() == STATUS_ACCEPTED);
+                    break;
+                case STATUS_COMPLETED:
+                    matchesStatus = (m.getStatus() == STATUS_COMPLETED);
+                    break;
+                case STATUS_CANCELED:
+                    matchesStatus = (m.getStatus() == STATUS_CANCELED);
+                    break;
+            }
 
+            // match week
+            boolean matchesWeek =
+                    m.getWeekYear() == currentWeekYear &&
+                            m.getWeekOfYear() == currentWeekOfYear;
+
+            // match day (only if user selected one)
             boolean matchesDay =
                     (selectedDay == 0) || (m.getDayOfWeek() == selectedDay);
 
-            if (matchesStatus && matchesDay) {
+            if (matchesStatus && matchesWeek && matchesDay) {
                 workingAppointments.add(m);
             }
         }
@@ -449,24 +608,15 @@ public class Schedule_TeacherFragment extends Fragment {
         });
 
         displayedAppointments.clear();
+        displayedAppointments.addAll(workingAppointments);
+
         adapter.notifyDataSetChanged();
-        currentIndex = 0;
-        loadNextPage();
+        currentIndex = workingAppointments.size();
+        isLoading = false;
     }
 
     private void loadNextPage() {
+        // Ready if you want real pagination later
         if (currentIndex >= workingAppointments.size()) return;
-
-        isLoading = true;
-
-        int nextLimit = Math.min(currentIndex + pageSize, workingAppointments.size());
-        List<ScheduleModel> subList = workingAppointments.subList(currentIndex, nextLimit);
-
-        int start = displayedAppointments.size();
-        displayedAppointments.addAll(subList);
-        adapter.notifyItemRangeInserted(start, subList.size());
-
-        currentIndex = nextLimit;
-        isLoading = false;
     }
 }

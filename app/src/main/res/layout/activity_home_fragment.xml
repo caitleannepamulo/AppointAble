@@ -46,11 +46,56 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Today"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        android:layout_marginStart="20dp"
+        android:layout_marginTop="20dp"
+        android:textColor="#000000" />
+
+    <TextView
+        android:id="@+id/btnAddForSelectedDate"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Add Appointment"
+        android:textColor="#5271FF"
+        android:textStyle="bold"
+        android:padding="6dp"
+        android:layout_marginStart="20dp"
+        android:visibility="gone"/>
+
+
+    <TextView
+        android:id="@+id/tvAppointmentIndicators"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text=""
+        android:textSize="14sp"
+        android:layout_marginStart="20dp"
+        android:layout_marginTop="4dp"
+        android:textColor="#444444" />
+
+    <TextView
+        android:id="@+id/tvNextLabel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Next Upcoming Appointment"
         android:textSize="18sp"
-        android:textColor="#212121"
-        android:fontFamily="@font/poppins_bold"
-        android:layout_marginStart="16dp"
-        android:layout_marginTop="8dp" />
+        android:textStyle="bold"
+        android:layout_marginStart="20dp"
+        android:layout_marginTop="20dp"
+        android:textColor="#000000"
+        android:visibility="gone"/>
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rvNextAppointment"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingLeft="16dp"
+        android:paddingRight="16dp"
+        android:clipToPadding="false"
+        android:visibility="gone"/>
+
+
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rvAppointments"

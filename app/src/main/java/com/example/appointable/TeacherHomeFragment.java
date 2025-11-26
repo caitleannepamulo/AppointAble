@@ -7,6 +7,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -14,17 +15,15 @@ import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.example.appointable.AppointmentAdapter;
-import com.example.appointable.SummaryAdapter;
-import com.example.appointable.Appointment;
-import com.example.appointable.SummaryItem;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.QueryDocumentSnapshot;
 
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;        // <-- added
 import java.util.Calendar;
 import java.util.List;
 import java.util.Locale;
@@ -40,16 +39,21 @@ public class TeacherHomeFragment extends Fragment {
     private FirebaseAuth mAuth;
     private FirebaseFirestore db;
 
-    private AppointmentAdapter appointmentAdapter;
+    private AppointmentTeacherAdapter appointmentTeacherAdapter;
     private SummaryAdapter summaryAdapter;
 
-    private final List<Appointment> allAppointments = new ArrayList<>();
+    private final List<AppointmentTeacher> allAppointmentTeachers = new ArrayList<>();
     private final List<SummaryItem> summaryItems = new ArrayList<>();
 
     private boolean isAscending = true;
 
     private final SimpleDateFormat dateFormat =
             new SimpleDateFormat("MMM dd, yyyy", Locale.getDefault());
+
+    private final SimpleDateFormat dbDateFormat =
+            new SimpleDateFormat("MM/dd/yyyy", Locale.getDefault());
+
+    private Calendar selectedDate = Calendar.getInstance();
 
     @Nullable
     @Override
@@ -80,11 +84,17 @@ public class TeacherHomeFragment extends Fragment {
 
         setupGreeting();
         setupRecyclerViews();
-        generateDummyData();
+
+        tvTodayTitle.setText(dateFormat.format(selectedDate.getTime()));
+
+        loadAppointmentsFromFirestore();
+        generateDummySummary();
         setupCalendarPicker();
         setupSummarySorting();
         showRandomQuoteImage();
     }
+
+    // ------------------ greeting + user name ------------------
 
     private void setupGreeting() {
         Calendar cal = Calendar.getInstance();
@@ -108,66 +118,94 @@ public class TeacherHomeFragment extends Fragment {
                 .get()
                 .addOnSuccessListener(snapshot -> {
                     String firstName = snapshot.getString("firstName");
-
                     if (firstName != null && !firstName.isEmpty()) {
                         String formatted = firstName.substring(0, 1).toUpperCase() +
                                 firstName.substring(1).toLowerCase();
                         tvNameOfUser.setText(formatted + "!");
                     }
                 })
-                .addOnFailureListener(e ->
-                        tvNameOfUser.setText("Unknown User!"));
+                .addOnFailureListener(e -> tvNameOfUser.setText("Unknown User!"));
     }
+
+    // ------------------ RecyclerViews ------------------
 
     private void setupRecyclerViews() {
         rvToday.setLayoutManager(new LinearLayoutManager(getContext()));
-        appointmentAdapter = new AppointmentAdapter(new ArrayList<>());
-        rvToday.setAdapter(appointmentAdapter);
+        appointmentTeacherAdapter = new AppointmentTeacherAdapter(new ArrayList<>());
+        rvToday.setAdapter(appointmentTeacherAdapter);
 
         rvSummary.setLayoutManager(new LinearLayoutManager(getContext()));
         summaryAdapter = new SummaryAdapter(new ArrayList<>());
         rvSummary.setAdapter(summaryAdapter);
     }
 
-    private void generateDummyData() {
-        Calendar today = Calendar.getInstance();
+    // ------------------ Firestore: load appointments with specific statuses ------------------
 
-        allAppointments.add(new Appointment("Kevin Tan", "Behavioral Therapy", "8:15 AM", today, "Pending"));
-        allAppointments.add(new Appointment("Joshua Pre", "Speech Therapy", "9:00 AM", today, "Pending"));
-
-        summaryItems.add(new SummaryItem("Kevin Tan", "Behavior Therapy", 22));
-        summaryItems.add(new SummaryItem("Joshua Pre", "Speech Therapy", 37));
-
-        appointmentAdapter.updateList(allAppointments);
-        summaryAdapter.updateItems(summaryItems);
-
-        tvTodayTitle.setText(dateFormat.format(today.getTime()));
-    }
-
-    private void setupCalendarPicker() {
-        ivTodayCalendar.setOnClickListener(v -> {
-            Calendar now = Calendar.getInstance();
-
-            new DatePickerDialog(getContext(), (view, year, month, day) -> {
-                Calendar selected = Calendar.getInstance();
-                selected.set(year, month, day);
-
-                tvTodayTitle.setText(dateFormat.format(selected.getTime()));
-
-                filterAppointments(selected);
-
-            }, now.get(Calendar.YEAR), now.get(Calendar.MONTH), now.get(Calendar.DAY_OF_MONTH)).show();
-        });
-    }
-
-    private void filterAppointments(Calendar selected) {
-        List<Appointment> filtered = new ArrayList<>();
-
-        for (Appointment a : allAppointments) {
-            if (sameDay(a.getDate(), selected)) filtered.add(a);
+    private void loadAppointmentsFromFirestore() {
+        FirebaseUser user = mAuth.getCurrentUser();
+        if (user == null) {
+            Toast.makeText(getContext(), "No user logged in.", Toast.LENGTH_SHORT).show();
+            return;
         }
 
-        appointmentAdapter.updateList(filtered);
+        String teacherId = user.getUid();
+
+        db.collection("appointments")
+                .whereEqualTo("teacherId", teacherId)
+                .whereIn("status", Arrays.asList(
+                        "Accepted",
+                        "Rescheduled",
+                        "Canceled",
+                        "Completed"
+                ))
+                .get()
+                .addOnSuccessListener(querySnapshot -> {
+                    allAppointmentTeachers.clear();
+
+                    for (QueryDocumentSnapshot doc : querySnapshot) {
+                        String childName = doc.getString("childName");
+                        String service = doc.getString("service");
+                        String timeStr = doc.getString("time");
+                        String dateStr = doc.getString("date");
+                        String statusStr = doc.getString("status");
+
+                        if (childName == null) childName = "";
+                        if (service == null) service = "";
+                        if (timeStr == null) timeStr = "";
+                        if (statusStr == null) statusStr = "";
+
+                        Calendar dateCal = Calendar.getInstance();
+                        if (dateStr != null && !dateStr.isEmpty()) {
+                            try {
+                                dateCal.setTime(dbDateFormat.parse(dateStr));
+                            } catch (ParseException e) {
+                                e.printStackTrace();
+                            }
+                        }
+
+                        allAppointmentTeachers.add(
+                                new AppointmentTeacher(childName, service, timeStr, dateCal, statusStr)
+                        );
+                    }
+
+                    updateAppointmentsForSelectedDate();
+                })
+                .addOnFailureListener(e -> {
+                    Toast.makeText(getContext(),
+                            "Failed to load appointments.",
+                            Toast.LENGTH_SHORT).show();
+                });
+    }
+
+    private void updateAppointmentsForSelectedDate() {
+        List<AppointmentTeacher> filtered = new ArrayList<>();
+
+        for (AppointmentTeacher a : allAppointmentTeachers) {
+            if (sameDay(a.getDate(), selectedDate)) filtered.add(a);
+        }
+
+        appointmentTeacherAdapter.updateList(filtered);
+        tvTodayTitle.setText(dateFormat.format(selectedDate.getTime()));
     }
 
     private boolean sameDay(Calendar c1, Calendar c2) {
@@ -176,14 +214,49 @@ public class TeacherHomeFragment extends Fragment {
                 c1.get(Calendar.DAY_OF_MONTH) == c2.get(Calendar.DAY_OF_MONTH);
     }
 
+    // ------------------ Summary (dummy for now) ------------------
+
+    private void generateDummySummary() {
+        summaryItems.clear();
+
+        summaryItems.add(new SummaryItem("Kevin Tan", "Behavior Therapy", 22));
+        summaryItems.add(new SummaryItem("Joshua Pre", "Speech Therapy", 37));
+
+        summaryAdapter.updateItems(summaryItems);
+    }
+
+    // ------------------ Date picker ------------------
+
+    private void setupCalendarPicker() {
+        ivTodayCalendar.setOnClickListener(v -> {
+            Calendar now = Calendar.getInstance();
+
+            new DatePickerDialog(
+                    getContext(),
+                    (view, year, month, day) -> {
+                        selectedDate = Calendar.getInstance();
+                        selectedDate.set(year, month, day);
+
+                        updateAppointmentsForSelectedDate();
+                    },
+                    now.get(Calendar.YEAR),
+                    now.get(Calendar.MONTH),
+                    now.get(Calendar.DAY_OF_MONTH)
+            ).show();
+        });
+    }
+
+    // ------------------ Summary sorting ------------------
+
     private void setupSummarySorting() {
         ivSummaryIcon.setOnClickListener(v -> {
             isAscending = !isAscending;
-
             summaryAdapter.sortByProgress(isAscending);
             ivSummaryIcon.setRotation(isAscending ? 0f : 180f);
         });
     }
+
+    // ------------------ Random quote image ------------------
 
     private void showRandomQuoteImage() {
         int[] images = {

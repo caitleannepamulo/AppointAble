@@ -1,6 +1,7 @@
 package com.example.appointable;
 
 import android.os.Bundle;
+import android.view.View;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
@@ -22,13 +23,11 @@ public class ParentsMainActivity extends AppCompatActivity {
 
         bottomNavigationView = findViewById(R.id.bottom_navigation);
 
-        // Correct fragment mapping
         fragmentMap.put(R.id.nav_home, new ParentHomeFragment());
         fragmentMap.put(R.id.nav_appointments, new AppointmentsFragment());
-        fragmentMap.put(R.id.nav_messages, new MessagesFragment());
+        fragmentMap.put(R.id.nav_messages, new ParentMessagesFragment());
         fragmentMap.put(R.id.nav_profile, new ProfileFragment());
 
-        // Listener for bottom nav
         bottomNavigationView.setOnItemSelectedListener(item -> {
             Fragment fragment = fragmentMap.get(item.getItemId());
             if (fragment != null) {
@@ -38,9 +37,8 @@ public class ParentsMainActivity extends AppCompatActivity {
             return false;
         });
 
-        // IMPORTANT: Set the selected tab instead of calling loadFragment manually
         if (savedInstanceState == null) {
-            bottomNavigationView.setSelectedItemId(R.id.nav_home); // This loads Home first
+            bottomNavigationView.setSelectedItemId(R.id.nav_home); // load Home first
         }
     }
 
@@ -49,5 +47,22 @@ public class ParentsMainActivity extends AppCompatActivity {
                 .beginTransaction()
                 .replace(R.id.fragment_container, fragment)
                 .commit();
+    }
+
+
+    public void hideBottomNav() {
+        if (bottomNavigationView != null) {
+            bottomNavigationView.setVisibility(View.GONE);
+        }
+    }
+
+    public void showBottomNav() {
+        if (bottomNavigationView != null) {
+            bottomNavigationView.setVisibility(View.VISIBLE);
+        }
+    }
+
+    public void updateMessagesBadge(int unreadCount) {
+
     }
 }

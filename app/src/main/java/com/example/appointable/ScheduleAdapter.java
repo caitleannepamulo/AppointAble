@@ -1,24 +1,42 @@
 package com.example.appointable;
 
-import android.widget.Toast;
-import androidx.annotation.NonNull;
-import androidx.appcompat.app.AlertDialog;
-import androidx.recyclerview.widget.RecyclerView;
-
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.Toast;
 
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
+import androidx.recyclerview.widget.RecyclerView;
+
+import com.google.firebase.firestore.FirebaseFirestore;
+
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 
 public class ScheduleAdapter extends RecyclerView.Adapter<ScheduleAdapter.ViewHolder> {
 
-    private List<ScheduleModel> list;
+    private final List<ScheduleModel> list;
 
-    public ScheduleAdapter(List<ScheduleModel> list) {
+    public static final int STATUS_ACCEPTED = 0;
+    public static final int STATUS_COMPLETED = 1;
+    public static final int STATUS_CANCELED = 2;
+
+    public interface StatusChangeListener {
+        void onStatusChanged();
+    }
+
+    private final StatusChangeListener statusChangeListener;
+
+    public ScheduleAdapter(List<ScheduleModel> list,
+                           StatusChangeListener statusChangeListener) {
         this.list = list;
+        this.statusChangeListener = statusChangeListener;
     }
 
     @NonNull
@@ -36,44 +54,50 @@ public class ScheduleAdapter extends RecyclerView.Adapter<ScheduleAdapter.ViewHo
         holder.tvChildName.setText(model.getChildName());
         holder.tvService.setText(model.getService());
         holder.tvTime.setText(model.getTime());
+        holder.tvDate.setText(formatDate(model.getDateString()));
 
-        if (model.getStatus() == 1) {
+        if (model.getStatus() == STATUS_COMPLETED) {
             holder.ivCalendar.setImageResource(R.drawable.ic_calendar_complete);
-        } else if (model.getStatus() == 2) {
+            holder.ivCalendar.setAlpha(0.4f);
+        } else if (model.getStatus() == STATUS_CANCELED) {
             holder.ivCalendar.setImageResource(R.drawable.ic_calendar_cancelled);
+            holder.ivCalendar.setAlpha(0.4f);
         } else {
             holder.ivCalendar.setImageResource(R.drawable.ic_calendar_pending);
+            holder.ivCalendar.setAlpha(1.0f);
         }
 
-        // click whole card → details
         holder.itemView.setOnClickListener(v -> {
             new AlertDialog.Builder(v.getContext())
                     .setTitle(model.getChildName())
                     .setMessage("Service: " + model.getService() +
-                            "\nTime: " + model.getTime())
+                            "\nTime: " + model.getTime() +
+                            "\nDate: " + formatDate(model.getDateString()))
                     .setPositiveButton("OK", null)
                     .show();
         });
 
         holder.ivCalendar.setOnClickListener(v -> {
-            new AlertDialog.Builder(v.getContext())
-                    .setTitle("Mark appointment")
-                    .setMessage("Do you confirm that this appointment is already completed?")
-                    .setNegativeButton("No", (dialog, which) -> {
-                        model.setStatus(2);
-                        notifyItemChanged(holder.getAdapterPosition());
-                        Toast.makeText(v.getContext(),
-                                "Marked as cancelled / not attended.",
-                                Toast.LENGTH_SHORT).show();
-                    })
-                    .setPositiveButton("Yes", (dialog, which) -> {
-                        model.setStatus(1);
-                        notifyItemChanged(holder.getAdapterPosition());
-                        Toast.makeText(v.getContext(),
-                                "Marked as completed.",
-                                Toast.LENGTH_SHORT).show();
-                    })
-                    .show();
+            int adapterPos = holder.getAdapterPosition();
+            if (adapterPos == RecyclerView.NO_POSITION) return;
+
+            ScheduleModel clickedModel = list.get(adapterPos);
+
+            if (clickedModel.getStatus() == STATUS_COMPLETED) {
+                Toast.makeText(v.getContext(),
+                        "This appointment is already completed.",
+                        Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            if (clickedModel.getStatus() == STATUS_CANCELED) {
+                Toast.makeText(v.getContext(),
+                        "This appointment is already canceled.",
+                        Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            showCompletedDialog(v, clickedModel, adapterPos);
         });
     }
 
@@ -82,9 +106,146 @@ public class ScheduleAdapter extends RecyclerView.Adapter<ScheduleAdapter.ViewHo
         return list.size();
     }
 
+    public void updateStatus(int position, int newStatus, View itemViewForAnimation) {
+        if (position < 0 || position >= list.size()) return;
+
+        ScheduleModel m = list.get(position);
+        m.setStatus(newStatus);
+        notifyItemChanged(position);
+
+        if (statusChangeListener != null) {
+            statusChangeListener.onStatusChanged();
+        }
+
+        String statusStr;
+        String reasonStr = null;
+
+        if (newStatus == STATUS_COMPLETED) {
+            statusStr = "Completed";
+        } else if (newStatus == STATUS_CANCELED) {
+            statusStr = "Canceled";
+            reasonStr = "Marked as canceled / not attended.";
+        } else {
+            statusStr = "Accepted";
+        }
+
+        updateStatusInFirestore(m, statusStr, reasonStr, itemViewForAnimation);
+    }
+
+    private void showCompletedDialog(View v, ScheduleModel model, int position) {
+        new AlertDialog.Builder(v.getContext())
+                .setTitle("Mark appointment")
+                .setMessage("Do you confirm that this appointment is already completed?")
+                .setNegativeButton("No", (dialog, which) -> {
+                    showCanceledCheckDialog(v, model, position);
+                })
+                .setPositiveButton("Yes", (dialog, which) -> {
+                    model.setStatus(STATUS_COMPLETED);
+                    notifyItemChanged(position);
+                    runFadeAnimation(v);
+
+                    if (statusChangeListener != null) {
+                        statusChangeListener.onStatusChanged();
+                    }
+
+                    updateStatusInFirestore(model, "Completed", null, v);
+
+                    Toast.makeText(v.getContext(),
+                            "Marked as completed.",
+                            Toast.LENGTH_SHORT).show();
+                })
+                .show();
+    }
+
+    private void showCanceledCheckDialog(View v, ScheduleModel model, int position) {
+        new AlertDialog.Builder(v.getContext())
+                .setTitle("Cancel appointment")
+                .setMessage("Does that mean the appointment is canceled?")
+                .setNegativeButton("No", (dialog, which) -> {
+                    showCompletedDialog(v, model, position);
+                })
+                .setPositiveButton("Yes", (dialog, which) -> {
+                    model.setStatus(STATUS_CANCELED);
+                    notifyItemChanged(position);
+                    runFadeAnimation(v);
+
+                    if (statusChangeListener != null) {
+                        statusChangeListener.onStatusChanged();
+                    }
+
+                    updateStatusInFirestore(
+                            model,
+                            "Canceled",
+                            "Marked as canceled / not attended.",
+                            v
+                    );
+
+                    Toast.makeText(v.getContext(),
+                            "Marked as canceled / not attended.",
+                            Toast.LENGTH_SHORT).show();
+                })
+                .show();
+    }
+
+    private void updateStatusInFirestore(ScheduleModel model,
+                                         String statusString,
+                                         String reasonString,
+                                         View v) {
+        String docId = model.getDocumentId();
+        if (docId == null || docId.isEmpty()) return;
+
+        if (reasonString != null) {
+            FirebaseFirestore.getInstance()
+                    .collection("appointments")
+                    .document(docId)
+                    .update(
+                            "status", statusString,
+                            "reason", reasonString
+                    )
+                    .addOnFailureListener(e -> {
+                        Toast.makeText(v.getContext(),
+                                "Failed to update status in server.",
+                                Toast.LENGTH_SHORT).show();
+                    });
+        } else {
+            FirebaseFirestore.getInstance()
+                    .collection("appointments")
+                    .document(docId)
+                    .update("status", statusString)
+                    .addOnFailureListener(e -> {
+                        Toast.makeText(v.getContext(),
+                                "Failed to update status in server.",
+                                Toast.LENGTH_SHORT).show();
+                    });
+        }
+    }
+
+    private void runFadeAnimation(View target) {
+        if (target == null) return;
+        target.setAlpha(0f);
+        target.animate()
+                .alpha(1f)
+                .setDuration(250)
+                .start();
+    }
+
+    private String formatDate(String rawDate) {
+        if (rawDate == null || rawDate.isEmpty()) return "";
+        try {
+            SimpleDateFormat input = new SimpleDateFormat("MM/dd/yyyy", Locale.getDefault());
+            SimpleDateFormat output = new SimpleDateFormat("MMMM d, yyyy", Locale.getDefault());
+            Date date = input.parse(rawDate);
+            if (date == null) return rawDate;
+            return output.format(date);
+        } catch (ParseException e) {
+            e.printStackTrace();
+            return rawDate;
+        }
+    }
+
     public static class ViewHolder extends RecyclerView.ViewHolder {
 
-        TextView tvChildName, tvService, tvTime;
+        TextView tvChildName, tvService, tvTime, tvDate;
         ImageView ivCalendar;
 
         public ViewHolder(@NonNull View itemView) {
@@ -93,6 +254,7 @@ public class ScheduleAdapter extends RecyclerView.Adapter<ScheduleAdapter.ViewHo
             tvChildName = itemView.findViewById(R.id.tvChildName);
             tvService = itemView.findViewById(R.id.tvService);
             tvTime = itemView.findViewById(R.id.tvTime);
+            tvDate = itemView.findViewById(R.id.tvDate);
             ivCalendar = itemView.findViewById(R.id.ivCalendar);
         }
     }

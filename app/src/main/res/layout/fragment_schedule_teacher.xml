@@ -6,7 +6,7 @@
     android:orientation="vertical"
     android:background="#F7F7F7"
     android:padding="16dp"
-    android:layout_marginBottom="100dp">
+    android:layout_marginBottom="80dp">
 
     <LinearLayout
         android:id="@+id/layoutStats"
@@ -19,7 +19,7 @@
         <androidx.cardview.widget.CardView
             android:id="@+id/cardRemainingAppointments"
             android:layout_width="0dp"
-            android:layout_height="100dp"
+            android:layout_height="120dp"
             android:layout_weight="1"
             android:layout_marginEnd="8dp"
             app:cardCornerRadius="18dp"
@@ -57,7 +57,7 @@
         <androidx.cardview.widget.CardView
             android:id="@+id/cardCompletedAppointments"
             android:layout_width="0dp"
-            android:layout_height="100dp"
+            android:layout_height="120dp"
             android:layout_weight="1"
             android:layout_marginStart="8dp"
             app:cardCornerRadius="18dp"
@@ -85,6 +85,44 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Completed Appointments"
+                    android:textSize="11sp"
+                    android:gravity="center"
+                    android:textColor="@android:color/white"
+                    android:fontFamily="@font/poppins" />
+            </LinearLayout>
+        </androidx.cardview.widget.CardView>
+
+        <androidx.cardview.widget.CardView
+            android:id="@+id/cardCanceledAppointments"
+            android:layout_width="0dp"
+            android:layout_height="120dp"
+            android:layout_weight="1"
+            android:layout_marginEnd="8dp"
+            app:cardCornerRadius="18dp"
+            app:cardUseCompatPadding="true"
+            app:cardElevation="4dp"
+            app:cardBackgroundColor="#9BADD9">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="vertical"
+                android:gravity="center">
+
+                <TextView
+                    android:id="@+id/tvCanceledCount"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="22"
+                    android:textSize="26sp"
+                    android:textColor="@android:color/white"
+                    android:fontFamily="@font/poppins_bold" />
+
+                <TextView
+                    android:id="@+id/tvCanceledLabel"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Canceled Appointments"
                     android:textSize="11sp"
                     android:gravity="center"
                     android:textColor="@android:color/white"

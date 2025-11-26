@@ -1,51 +1,227 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:background="@android:color/white"
-    android:padding="16dp">
+    android:background="#F5F7FA">
 
-    <androidx.constraintlayout.widget.ConstraintLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content">
+    <!-- Header: counters + title -->
+    <LinearLayout
+        android:id="@+id/headerContainer"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
 
+        <!-- Optional title for the counters -->
         <TextView
-            android:id="@+id/tvTitleAppointments"
+            android:id="@+id/tvStatusOverview"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Appointment Status Overview"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:textColor="#222222"
+            android:layout_marginBottom="8dp"/>
+
+        <!-- 2x2 Grid of status cards -->
+        <GridLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:columnCount="2"
+            android:rowCount="2"
+            android:alignmentMode="alignMargins"
+            android:useDefaultMargins="true">
+
+            <!-- Pending -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/layoutPending"
+                android:layout_width="0dp"
+                android:layout_height="100dp"
+                android:layout_columnWeight="1"
+                android:layout_rowWeight="1"
+                android:clickable="true"
+                android:focusable="true"
+                app:cardUseCompatPadding="true"
+                app:cardElevation="4dp"
+                app:cardCornerRadius="12dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:orientation="vertical"
+                    android:gravity="center">
+
+                    <TextView
+                        android:id="@+id/tvPending"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="-"
+                        android:textColor="#222222"
+                        android:textSize="28sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Pending"
+                        android:textSize="14sp"
+                        android:textColor="#666666" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Canceled -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/layoutCanceled"
+                android:layout_width="0dp"
+                android:layout_height="100dp"
+                android:layout_columnWeight="1"
+                android:layout_rowWeight="1"
+                android:clickable="true"
+                android:focusable="true"
+                app:cardUseCompatPadding="true"
+                app:cardElevation="4dp"
+                app:cardCornerRadius="12dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:orientation="vertical"
+                    android:gravity="center">
+
+                    <TextView
+                        android:id="@+id/tvCanceledCount"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="-"
+                        android:textColor="#222222"
+                        android:textSize="28sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Canceled"
+                        android:textSize="14sp"
+                        android:textColor="#666666" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Rescheduled -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/layoutRescheduled"
+                android:layout_width="0dp"
+                android:layout_height="100dp"
+                android:layout_columnWeight="1"
+                android:layout_rowWeight="1"
+                android:clickable="true"
+                android:focusable="true"
+                app:cardUseCompatPadding="true"
+                app:cardElevation="4dp"
+                app:cardCornerRadius="12dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:orientation="vertical"
+                    android:gravity="center">
+
+                    <TextView
+                        android:id="@+id/tvRescheduledCount"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="-"
+                        android:textColor="#222222"
+                        android:textSize="28sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Rescheduled"
+                        android:textSize="14sp"
+                        android:textColor="#666666" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Completed -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/layoutCompleted"
+                android:layout_width="0dp"
+                android:layout_height="100dp"
+                android:layout_columnWeight="1"
+                android:layout_rowWeight="1"
+                android:clickable="true"
+                android:focusable="true"
+                app:cardUseCompatPadding="true"
+                app:cardElevation="4dp"
+                app:cardCornerRadius="12dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:orientation="vertical"
+                    android:gravity="center">
+
+                    <TextView
+                        android:id="@+id/tvCompletedCount"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="-"
+                        android:textColor="#222222"
+                        android:textSize="28sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Completed"
+                        android:textSize="14sp"
+                        android:textColor="#666666" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+        </GridLayout>
+
+        <!-- Section Title -->
+        <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Appointments"
             android:textSize="22sp"
-            android:textColor="#000000"
-            android:fontFamily="@font/poppins_bold"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintBottom_toBottomOf="parent" />
+            android:textStyle="bold"
+            android:layout_marginTop="24dp"
+            android:textColor="#000000"/>
 
-        <ImageView
-            android:id="@+id/ivSort"
-            android:layout_width="20dp"
-            android:layout_height="20dp"
-            android:src="@drawable/ic_sort"
-            android:contentDescription="Sort appointments"
-            app:tint="#000000"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toTopOf="@id/tvTitleAppointments"
-            app:layout_constraintBottom_toBottomOf="@id/tvTitleAppointments" />
+    </LinearLayout>
 
-    </androidx.constraintlayout.widget.ConstraintLayout>
-
-    <View
-        android:layout_width="match_parent"
-        android:layout_height="8dp" />
-
+    <!-- Appointment List: fills the rest of the screen and scrolls -->
     <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/rvAllAppointments"
-        android:layout_width="match_parent"
+        android:id="@+id/rvAppointments"
+        android:layout_width="0dp"
         android:layout_height="0dp"
-        android:layout_weight="1"
-        android:clipToPadding="false"
-        android:paddingBottom="8dp" />
+        app:layout_constraintTop_toBottomOf="@id/headerContainer"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:clipToPadding="false"/>
 
-</LinearLayout>
+    <!-- Floating Add Button -->
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/fabAdd"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:src="@drawable/ic_add"
+        app:backgroundTint="#5271FF"
+        app:tint="@android:color/white"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_margin="22dp"/>
+
+</androidx.constraintlayout.widget.ConstraintLayout>
