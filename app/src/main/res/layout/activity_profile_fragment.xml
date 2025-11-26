@@ -44,6 +44,7 @@
             android:orientation="vertical"
             android:layout_marginTop="20dp">
 
+            <!-- Firstname / Lastname -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -69,7 +70,8 @@
                         android:layout_height="40dp"
                         android:background="@drawable/bg_edittext_outline"
                         android:paddingLeft="8dp"
-                        android:textSize="12sp"/>
+                        android:textSize="12sp"
+                        android:textColor="#37353E"/>
                 </LinearLayout>
 
                 <LinearLayout
@@ -91,10 +93,12 @@
                         android:layout_height="40dp"
                         android:background="@drawable/bg_edittext_outline"
                         android:paddingLeft="8dp"
-                        android:textSize="12sp"/>
+                        android:textSize="12sp"
+                        android:textColor="#37353E"/>
                 </LinearLayout>
             </LinearLayout>
 
+            <!-- Middlename / Suffix -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -121,7 +125,8 @@
                         android:layout_height="40dp"
                         android:background="@drawable/bg_edittext_outline"
                         android:paddingLeft="8dp"
-                        android:textSize="12sp"/>
+                        android:textSize="12sp"
+                        android:textColor="#37353E"/>
                 </LinearLayout>
 
                 <LinearLayout
@@ -143,10 +148,12 @@
                         android:layout_height="40dp"
                         android:background="@drawable/bg_edittext_outline"
                         android:paddingLeft="8dp"
-                        android:textSize="12sp"/>
+                        android:textSize="12sp"
+                        android:textColor="#37353E"/>
                 </LinearLayout>
             </LinearLayout>
 
+            <!-- Gender -->
             <TextView
                 android:text="Gender"
                 android:layout_marginTop="8dp"
@@ -174,6 +181,7 @@
                     android:layout_height="wrap_content"/>
             </RadioGroup>
 
+            <!-- Birthdate / Age -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -207,6 +215,7 @@
                             android:paddingRight="36dp"
                             android:background="@android:color/transparent"
                             android:textSize="12sp"
+                            android:textColor="#37353E"
                             android:focusable="false"
                             android:clickable="false"/>
 
@@ -242,10 +251,12 @@
                         android:enabled="false"
                         android:background="@drawable/bg_edittext_outline"
                         android:paddingLeft="8dp"
-                        android:textSize="12sp"/>
+                        android:textSize="12sp"
+                        android:textColor="#37353E"/>
                 </LinearLayout>
             </LinearLayout>
 
+            <!-- Email -->
             <TextView
                 android:text="Email Address"
                 android:layout_marginTop="8dp"
@@ -260,8 +271,10 @@
                 android:enabled="false"
                 android:background="@drawable/bg_edittext_outline"
                 android:paddingLeft="8dp"
-                android:textSize="12sp"/>
+                android:textSize="12sp"
+                android:textColor="#37353E"/>
 
+            <!-- Username -->
             <TextView
                 android:text="Username"
                 android:layout_marginTop="8dp"
@@ -275,8 +288,10 @@
                 android:layout_height="40dp"
                 android:background="@drawable/bg_edittext_outline"
                 android:paddingLeft="8dp"
-                android:textSize="12sp"/>
+                android:textSize="12sp"
+                android:textColor="#37353E"/>
 
+            <!-- Contact Number -->
             <TextView
                 android:text="Contact Number"
                 android:layout_marginTop="8dp"
@@ -291,8 +306,10 @@
                 android:background="@drawable/bg_edittext_outline"
                 android:paddingLeft="8dp"
                 android:inputType="phone"
-                android:textSize="12sp"/>
+                android:textSize="12sp"
+                android:textColor="#37353E"/>
 
+            <!-- Role -->
             <TextView
                 android:text="Role"
                 android:layout_marginTop="8dp"
@@ -306,6 +323,7 @@
                 android:layout_height="40dp"
                 android:background="@drawable/bg_edittext_outline"/>
 
+            <!-- Buttons -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"

@@ -70,7 +70,6 @@ public class Chat_ParentFragment extends Fragment {
 
     private float startX, startY;
 
-    // factory
     public static Chat_ParentFragment newInstance(String otherUid,
                                                   String otherName,
                                                   @Nullable String firstMessage) {
@@ -107,7 +106,6 @@ public class Chat_ParentFragment extends Fragment {
                     .collection("messages");
         }
 
-        // handle system back
         OnBackPressedCallback callback = new OnBackPressedCallback(true) {
             @Override
             public void handleOnBackPressed() {
@@ -146,7 +144,7 @@ public class Chat_ParentFragment extends Fragment {
         adapter = new ChatMessagesAdapter(messages);
         rvChatMessages.setAdapter(adapter);
 
-        // hide bottom nav when chat is open (safety, in case caller forgot)
+        // hide bottom nav while in chat
         if (getActivity() instanceof ParentsMainActivity) {
             ((ParentsMainActivity) getActivity()).hideBottomNav();
         }
@@ -361,7 +359,6 @@ public class Chat_ParentFragment extends Fragment {
     }
 
     private void closeChat() {
-        // show bottom nav again when leaving chat (PARENTS activity)
         if (getActivity() instanceof ParentsMainActivity) {
             ((ParentsMainActivity) requireActivity()).showBottomNav();
         }
@@ -413,7 +410,6 @@ public class Chat_ParentFragment extends Fragment {
             convoListener = null;
         }
 
-        // safety: make sure bottom nav is visible when fragment is destroyed
         if (getActivity() instanceof ParentsMainActivity) {
             ((ParentsMainActivity) getActivity()).showBottomNav();
         }

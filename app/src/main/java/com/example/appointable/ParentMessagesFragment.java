@@ -297,6 +297,7 @@ public class ParentMessagesFragment extends Fragment {
         String q = hasQuery ? query.toLowerCase().trim() : "";
 
         for (TeacherMessageModel user : allUsers) {
+            // only show users you already have a conversation with
             if (!convoMetaMap.containsKey(user.getUserId())) {
                 continue;
             }
@@ -364,14 +365,14 @@ public class ParentMessagesFragment extends Fragment {
         });
     }
 
-    // --- open chat & hide bottom nav ---
-
+    // open chat & hide nav
     private void openChatScreen(String otherUid, String otherName, @Nullable String firstMessage) {
         if (getActivity() instanceof ParentsMainActivity) {
             ((ParentsMainActivity) requireActivity()).hideBottomNav();
         }
 
-        Fragment chatFragment = Chat_ParentFragment.newInstance(otherUid, otherName, firstMessage);
+        Fragment chatFragment =
+                Chat_ParentFragment.newInstance(otherUid, otherName, firstMessage);
 
         requireActivity().getSupportFragmentManager()
                 .beginTransaction()
