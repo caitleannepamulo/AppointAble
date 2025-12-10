@@ -57,6 +57,11 @@ public class AppointmentsFragment extends Fragment {
 
     private TextView tvCanceledCount, tvRescheduledCount, tvCompletedCount, tvPendingCount;
 
+    private static final int OPENING_MINUTE = 6 * 60; // 6:00 AM -> 360
+    private static final int CLOSING_MINUTE = 18 * 60; // 6:00 PM -> 1080
+    private static final int SLOT_DURATION_MINUTES = 60; // 1-hour appointment
+
+
     public AppointmentsFragment() {}
 
     // -----------------------------------------------------------
@@ -229,6 +234,135 @@ public class AppointmentsFragment extends Fragment {
         }
     }
 
+    private int parseTimeToMinutes(String timeStr) {
+        if (timeStr == null) return -1;
+
+        try {
+            SimpleDateFormat sdf = new SimpleDateFormat("h:mm a", Locale.getDefault());
+            Date date = sdf.parse(timeStr);
+            Calendar cal = Calendar.getInstance();
+            cal.setTime(date);
+            int hour = cal.get(Calendar.HOUR_OF_DAY);
+            int minute = cal.get(Calendar.MINUTE);
+            return hour * 60 + minute;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return -1;
+        }
+    }
+
+
+    private String formatMinutesToTime(int minutes) {
+        int h24 = minutes / 60;
+        int m = minutes % 60;
+
+        String ampm = (h24 >= 12) ? "PM" : "AM";
+        int h12 = h24 % 12;
+        if (h12 == 0) h12 = 12;
+
+        return h12 + ":" + String.format(Locale.getDefault(), "%02d", m) + " " + ampm;
+    }
+
+    private interface TimeSlotsCallback {
+        void onResult(List<String> freeSlots);
+    }
+
+    // Add excludeAppointmentId (nullable) 👇
+    private void loadAvailableTimeSlots(String teacherId,
+                                        String date,
+                                        String excludeAppointmentId,
+                                        TimeSlotsCallback callback) {
+
+        FirebaseFirestore db = FirebaseFirestore.getInstance();
+
+        db.collection("appointments")
+                .whereEqualTo("teacherId", teacherId)
+                .whereEqualTo("date", date)
+                .get()
+                .addOnSuccessListener(query -> {
+
+                    List<Integer> bookedMinutes = new ArrayList<>();
+
+                    for (DocumentSnapshot doc : query) {
+
+                        // 🔸 Skip the appointment we're currently rescheduling
+                        if (excludeAppointmentId != null &&
+                                excludeAppointmentId.equals(doc.getId())) {
+                            continue;
+                        }
+
+                        String status = doc.getString("status");
+                        if (status != null && status.equalsIgnoreCase("Canceled")) {
+                            continue; // canceled doesn't block
+                        }
+
+                        String timeStr = doc.getString("time");
+                        int startMin = parseTimeToMinutes(timeStr);
+                        if (startMin >= 0) {
+                            bookedMinutes.add(startMin);
+                        }
+                    }
+
+                    List<String> freeSlots = new ArrayList<>();
+
+                    // 6:00–17:00 (last 1-hour slot)
+                    for (int m = OPENING_MINUTE;
+                         m + SLOT_DURATION_MINUTES <= CLOSING_MINUTE;
+                         m += SLOT_DURATION_MINUTES) {
+
+                        if (!bookedMinutes.contains(m)) {
+                            freeSlots.add(formatMinutesToTime(m));
+                        }
+                    }
+
+                    callback.onResult(freeSlots);
+                })
+                .addOnFailureListener(e -> {
+                    e.printStackTrace();
+                    callback.onResult(new ArrayList<>());
+                });
+    }
+
+
+    private void showAvailableTimeDialog(EditText etTime,
+                                         Spinner spinnerTeacher,
+                                         EditText etDate) {
+
+        int teacherPos = spinnerTeacher.getSelectedItemPosition();
+        if (teacherPos == 0) {
+            Toast.makeText(getContext(), "Please select a teacher first", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        String date = etDate.getText().toString().trim();
+        if (date.isEmpty()) {
+            Toast.makeText(getContext(), "Please select a date first", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // teacherPos - 1 because index 0 is "--Select Teacher--"
+        String teacherId = teacherIdList.get(teacherPos - 1);
+
+        loadAvailableTimeSlots(teacherId, date, null, freeSlots -> {
+            if (freeSlots.isEmpty()) {
+                Toast.makeText(getContext(),
+                        "No available times for this date.",
+                        Toast.LENGTH_LONG).show();
+                return;
+            }
+
+            CharSequence[] items = freeSlots.toArray(new CharSequence[0]);
+
+            new AlertDialog.Builder(getContext())
+                    .setTitle("Select Time")
+                    .setItems(items, (dialog, which) -> {
+                        etTime.setText(freeSlots.get(which));
+                    })
+                    .show();
+        });
+    }
+
+
     // Simple highlight by changing alpha on the selected card
     private void highlightSelectedStatus() {
         if (layoutPending == null) return; // safety if views not ready yet
@@ -330,7 +464,8 @@ public class AppointmentsFragment extends Fragment {
         loadTeachers(spinnerTeacher);
 
         etDate.setOnClickListener(v -> pickDate(etDate));
-        etTime.setOnClickListener(v -> pickTime(etTime));
+        etTime.setOnClickListener(v -> showAvailableTimeDialog(etTime, spinnerTeacher, etDate));
+
 
         AlertDialog dialog = builder.create();
 
@@ -380,13 +515,19 @@ public class AppointmentsFragment extends Fragment {
 
     private void pickDate(EditText et) {
         Calendar c = Calendar.getInstance();
-        new DatePickerDialog(
+
+        DatePickerDialog dialog = new DatePickerDialog(
                 getContext(),
                 (picker, y, m, d) -> et.setText((m + 1) + "/" + d + "/" + y),
                 c.get(Calendar.YEAR),
                 c.get(Calendar.MONTH),
                 c.get(Calendar.DAY_OF_MONTH)
-        ).show();
+        );
+
+        // 🔒 Disable past dates
+        dialog.getDatePicker().setMinDate(c.getTimeInMillis());
+
+        dialog.show();
     }
 
     private void pickTime(EditText et) {
@@ -420,27 +561,39 @@ public class AppointmentsFragment extends Fragment {
 
         String studentId = user.getUid();
 
-        db.collection("users").document(studentId)
-                .get()
-                .addOnSuccessListener(doc -> {
+        // ✅ Check availability first (excludeAppointmentId = null when creating)
+        isTimeSlotAvailable(teacherId, date, time, null, isAvailable -> {
+            if (!isAvailable) {
+                Toast.makeText(getContext(),
+                        "This time overlaps an existing booking or is outside 6 AM – 6 PM.",
+                        Toast.LENGTH_LONG).show();
+                return;
+            }
 
-                    String childName = doc.getString("firstName") + " " + doc.getString("lastName");
-                    String id = db.collection("appointments").document().getId();
+            db.collection("users").document(studentId)
+                    .get()
+                    .addOnSuccessListener(doc -> {
 
-                    Appointment appt = new Appointment(
-                            id, studentId, childName,
-                            teacherId, teacherName, service,
-                            date, time, "Pending"
-                    );
+                        String childName = doc.getString("firstName") + " " + doc.getString("lastName");
+                        String id = db.collection("appointments").document().getId();
 
-                    db.collection("appointments").document(id)
-                            .set(appt)
-                            .addOnSuccessListener(a -> {
-                                Toast.makeText(getContext(), "Appointment Sent", Toast.LENGTH_SHORT).show();
-                                loadAppointments();
-                            });
-                });
+                        Appointment appt = new Appointment(
+                                id, studentId, childName,
+                                teacherId, teacherName, service,
+                                date, time, "Pending"
+                        );
+
+                        db.collection("appointments").document(id)
+                                .set(appt)
+                                .addOnSuccessListener(a -> {
+                                    Toast.makeText(getContext(), "Appointment Sent", Toast.LENGTH_SHORT).show();
+                                    loadAppointments();
+                                });
+                    });
+        });
     }
+
+
 
     // -----------------------------------------------------------
     // OPTIONS MENU
@@ -514,7 +667,7 @@ public class AppointmentsFragment extends Fragment {
         EditText etComment = view.findViewById(R.id.etComment);
 
         etNewDate.setOnClickListener(v -> pickDate(etNewDate));
-        etNewTime.setOnClickListener(v -> pickTime(etNewTime));
+        etNewTime.setOnClickListener(v -> showAvailableTimeDialogForReschedule(etNewTime, appt, etNewDate));
 
         AlertDialog dialog = new AlertDialog.Builder(getContext())
                 .setTitle("Reschedule Appointment")
@@ -564,6 +717,39 @@ public class AppointmentsFragment extends Fragment {
         dialog.show();
     }
 
+    private void showAvailableTimeDialogForReschedule(EditText etNewTime,
+                                                      Appointment appt,
+                                                      EditText etNewDate) {
+
+        String date = etNewDate.getText().toString().trim();
+        if (date.isEmpty()) {
+            Toast.makeText(getContext(), "Please select a new date first", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        String teacherId = appt.getTeacherId(); // make sure this getter exists
+
+        // Exclude this appointment's own ID so its current time doesn't block itself
+        loadAvailableTimeSlots(teacherId, date, appt.getId(), freeSlots -> {
+            if (freeSlots.isEmpty()) {
+                Toast.makeText(getContext(),
+                        "No available times for this date.",
+                        Toast.LENGTH_LONG).show();
+                return;
+            }
+
+            CharSequence[] items = freeSlots.toArray(new CharSequence[0]);
+
+            new AlertDialog.Builder(getContext())
+                    .setTitle("Select Time")
+                    .setItems(items, (dialog, which) -> {
+                        etNewTime.setText(freeSlots.get(which));
+                    })
+                    .show();
+        });
+    }
+
+
     private void updateStatus(Appointment appt, String newStatus) {
         FirebaseFirestore.getInstance()
                 .collection("appointments")
@@ -573,17 +759,32 @@ public class AppointmentsFragment extends Fragment {
     }
 
     private void updateReschedule(Appointment appt, String newDate, String newTime, String comment) {
-        FirebaseFirestore.getInstance()
-                .collection("appointments")
-                .document(appt.getId())
-                .update(
-                        "date", newDate,
-                        "time", newTime,
-                        "status", "Rescheduled",
-                        "rescheduleComment", comment
-                )
-                .addOnSuccessListener(a -> loadAppointments());
+
+        String teacherId = appt.getTeacherId(); // make sure you have this getter
+
+        // excludeAppointmentId = appt.getId() so we don't conflict with itself
+        isTimeSlotAvailable(teacherId, newDate, newTime, appt.getId(), isAvailable -> {
+            if (!isAvailable) {
+                Toast.makeText(getContext(),
+                        "This time overlaps an existing booking or is outside 6 AM – 6 PM.",
+                        Toast.LENGTH_LONG).show();
+                return;
+            }
+
+            FirebaseFirestore.getInstance()
+                    .collection("appointments")
+                    .document(appt.getId())
+                    .update(
+                            "date", newDate,
+                            "time", newTime,
+                            "status", "Rescheduled",
+                            "rescheduleComment", comment
+                    )
+                    .addOnSuccessListener(a -> loadAppointments());
+        });
     }
+
+
 
     // -----------------------------------------------------------
     // REMOVE APPOINTMENT
@@ -654,4 +855,119 @@ public class AppointmentsFragment extends Fragment {
                     spinnerTeacher.setSelection(0);
                 });
     }
+
+//    Checker if slot is booked
+    private interface SlotCheckCallback {
+        void onResult(boolean isTaken);
+    }
+
+    private void isTimeSlotAvailable(String teacherId,
+                                     String date,
+                                     String time,
+                                     String excludeAppointmentId,  // null when creating
+                                     SlotCheckCallback callback) {
+
+        int requestedStart = parseTimeToMinutes(time);
+        if (requestedStart < 0) {
+            callback.onResult(false);
+            return;
+        }
+
+        int requestedEnd = requestedStart + SLOT_DURATION_MINUTES;
+
+        // 🔒 Check working hours: 6:00–18:00
+        if (requestedStart < OPENING_MINUTE || requestedEnd > CLOSING_MINUTE) {
+            // requested time is outside 6am–6pm
+            callback.onResult(false);
+            return;
+        }
+
+        FirebaseFirestore db = FirebaseFirestore.getInstance();
+
+        db.collection("appointments")
+                .whereEqualTo("teacherId", teacherId)
+                .whereEqualTo("date", date)
+                .get()
+                .addOnSuccessListener(query -> {
+
+                    for (DocumentSnapshot doc : query) {
+
+                        // Skip the appointment we’re currently rescheduling
+                        if (excludeAppointmentId != null &&
+                                excludeAppointmentId.equals(doc.getId())) {
+                            continue;
+                        }
+
+                        String status = doc.getString("status");
+                        if (status != null && status.equalsIgnoreCase("Canceled")) {
+                            // Canceled doesn’t block
+                            continue;
+                        }
+
+                        String existingTime = doc.getString("time");
+                        int existingStart = parseTimeToMinutes(existingTime);
+                        if (existingStart < 0) continue;
+
+                        int existingEnd = existingStart + SLOT_DURATION_MINUTES;
+
+                        // 🔁 Overlap check:
+                        // [requestedStart, requestedEnd) vs [existingStart, existingEnd)
+                        boolean overlap = requestedStart < existingEnd &&
+                                requestedEnd   > existingStart;
+
+                        if (overlap) {
+                            // e.g. existing = 7–8, requested = 7:30–8:30 → blocked
+                            callback.onResult(false);
+                            return;
+                        }
+                    }
+
+                    // No overlaps found → slot is free
+                    callback.onResult(true);
+                })
+                .addOnFailureListener(e -> {
+                    e.printStackTrace();
+                    // Your choice: allow or block on error. Here we block to be safe.
+                    callback.onResult(false);
+                });
+    }
+
+
+    private void checkSlotTaken(String teacherId,
+                                String date,
+                                String time,
+                                SlotCheckCallback callback) {
+
+        FirebaseFirestore db = FirebaseFirestore.getInstance();
+
+        db.collection("appointments")
+                .whereEqualTo("teacherId", teacherId)
+                .whereEqualTo("date", date)
+                .get()
+                .addOnSuccessListener(query -> {
+                    boolean taken = false;
+
+                    for (DocumentSnapshot doc : query) {
+                        String existingTime = doc.getString("time");
+                        String status = doc.getString("status");
+                        if (status == null) status = "";
+
+                        // Treat non-canceled appointments as "blocking" the slot
+                        boolean active = !status.equalsIgnoreCase("Canceled");
+
+                        if (active && time.equals(existingTime)) {
+                            taken = true;
+                            break;
+                        }
+                    }
+
+                    callback.onResult(taken);
+                })
+                .addOnFailureListener(e -> {
+                    // If you want, you can choose to fail-safe here (block the slot),
+                    // but usually it’s better to allow booking and log the error.
+                    callback.onResult(false);
+                });
+    }
+
 }

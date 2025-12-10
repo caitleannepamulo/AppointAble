@@ -17,8 +17,6 @@ import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.example.appointable.AppointmentAdapter;
-import com.example.appointable.Appointment;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.DocumentSnapshot;
@@ -32,7 +30,6 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
-
 
 public class ParentHomeFragment extends Fragment {
 
@@ -49,6 +46,16 @@ public class ParentHomeFragment extends Fragment {
     private FirebaseFirestore db;
 
     private Calendar currentSelectedDate = Calendar.getInstance();
+
+    // ---------- WORKING HOURS + SLOT DURATION (6 AM – 6 PM, 1 HOUR) ----------
+    private static final int OPENING_MINUTE = 6 * 60;   // 6:00 AM
+    private static final int CLOSING_MINUTE = 18 * 60;  // 6:00 PM
+    private static final int SLOT_DURATION_MINUTES = 60;
+
+    // For async time-slot callbacks
+    private interface TimeSlotsCallback {
+        void onResult(List<String> freeSlots);
+    }
 
     public ParentHomeFragment() {}
 
@@ -71,7 +78,7 @@ public class ParentHomeFragment extends Fragment {
         setupGreeting();
         initRecycler();
 
-        // Gray out past days
+        // Gray out past days on the calendar
         calendarView.setMinDate(System.currentTimeMillis());
 
         loadAppointments();
@@ -158,7 +165,6 @@ public class ParentHomeFragment extends Fragment {
                     filterAppointmentsForDate(currentSelectedDate.getTimeInMillis());
                 });
     }
-
 
     // ---------------- CALENDAR CLICK ----------------
 
@@ -317,7 +323,7 @@ public class ParentHomeFragment extends Fragment {
                 .show();
     }
 
-    // ---------------- RESCHEDULE ----------------
+    // ---------------- RESCHEDULE (UPDATED) ----------------
 
     private void showRescheduleDialog(Appointment appt) {
 
@@ -326,8 +332,16 @@ public class ParentHomeFragment extends Fragment {
         EditText etNewDate = view.findViewById(R.id.etNewDate);
         EditText etNewTime = view.findViewById(R.id.etNewTime);
 
+        // Optional: prefill current values
+        etNewDate.setText(appt.getDate());
+        etNewTime.setText(appt.getTime());
+
         etNewDate.setOnClickListener(v -> pickDate(etNewDate));
-        etNewTime.setOnClickListener(v -> pickTime(etNewTime));
+
+        // 🔑 Use available time slots dialog instead of TimePicker clock
+        etNewTime.setOnClickListener(v ->
+                showAvailableTimeDialogForReschedule(etNewTime, appt, etNewDate)
+        );
 
         new AlertDialog.Builder(getContext())
                 .setTitle("Reschedule Appointment")
@@ -352,15 +366,20 @@ public class ParentHomeFragment extends Fragment {
     private void pickDate(EditText et) {
         Calendar c = Calendar.getInstance();
 
-        new DatePickerDialog(
+        DatePickerDialog dp = new DatePickerDialog(
                 getContext(),
                 (picker, y, m, d) -> et.setText((m + 1) + "/" + d + "/" + y),
                 c.get(Calendar.YEAR),
                 c.get(Calendar.MONTH),
                 c.get(Calendar.DAY_OF_MONTH)
-        ).show();
+        );
+
+        // 🔒 Disable past dates in the date picker
+        dp.getDatePicker().setMinDate(c.getTimeInMillis());
+        dp.show();
     }
 
+    // kept in case you still use it elsewhere (not used for reschedule anymore)
     private void pickTime(EditText et) {
         Calendar c = Calendar.getInstance();
 
@@ -400,5 +419,121 @@ public class ParentHomeFragment extends Fragment {
                         "status", "Rescheduled"
                 )
                 .addOnSuccessListener(a -> loadAppointments());
+    }
+
+    // ---------------- TIME HELPERS & AVAILABLE SLOTS ----------------
+
+    private int parseTimeToMinutes(String timeStr) {
+        if (timeStr == null) return -1;
+
+        try {
+            SimpleDateFormat sdf = new SimpleDateFormat("h:mm a", Locale.getDefault());
+            Date date = sdf.parse(timeStr);
+            Calendar cal = Calendar.getInstance();
+            cal.setTime(date);
+            int hour = cal.get(Calendar.HOUR_OF_DAY);
+            int minute = cal.get(Calendar.MINUTE);
+            return hour * 60 + minute;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return -1;
+        }
+    }
+
+    private String formatMinutesToTime(int minutes) {
+        int h24 = minutes / 60;
+        int m = minutes % 60;
+
+        String ampm = (h24 >= 12) ? "PM" : "AM";
+        int h12 = h24 % 12;
+        if (h12 == 0) h12 = 12;
+
+        return h12 + ":" + String.format(Locale.getDefault(), "%02d", m) + " " + ampm;
+    }
+
+    private void loadAvailableTimeSlots(String teacherId,
+                                        String date,
+                                        String excludeAppointmentId,
+                                        TimeSlotsCallback callback) {
+
+        FirebaseFirestore db = FirebaseFirestore.getInstance();
+
+        db.collection("appointments")
+                .whereEqualTo("teacherId", teacherId)
+                .whereEqualTo("date", date)
+                .get()
+                .addOnSuccessListener(query -> {
+
+                    List<Integer> bookedMinutes = new ArrayList<>();
+
+                    for (DocumentSnapshot doc : query) {
+
+                        // Skip the appointment we're rescheduling
+                        if (excludeAppointmentId != null &&
+                                excludeAppointmentId.equals(doc.getId())) {
+                            continue;
+                        }
+
+                        String status = doc.getString("status");
+                        if (status != null && status.equalsIgnoreCase("Canceled")) {
+                            continue; // canceled doesn't block
+                        }
+
+                        String timeStr = doc.getString("time");
+                        int startMin = parseTimeToMinutes(timeStr);
+                        if (startMin >= 0) {
+                            bookedMinutes.add(startMin);
+                        }
+                    }
+
+                    List<String> freeSlots = new ArrayList<>();
+
+                    // Generate hourly slots between 6:00 and 17:00 (last start)
+                    for (int m = OPENING_MINUTE;
+                         m + SLOT_DURATION_MINUTES <= CLOSING_MINUTE;
+                         m += SLOT_DURATION_MINUTES) {
+
+                        if (!bookedMinutes.contains(m)) {
+                            freeSlots.add(formatMinutesToTime(m));
+                        }
+                    }
+
+                    callback.onResult(freeSlots);
+                })
+                .addOnFailureListener(e -> {
+                    e.printStackTrace();
+                    callback.onResult(new ArrayList<>());
+                });
+    }
+
+    private void showAvailableTimeDialogForReschedule(EditText etNewTime,
+                                                      Appointment appt,
+                                                      EditText etNewDate) {
+
+        String date = etNewDate.getText().toString().trim();
+        if (date.isEmpty()) {
+            Toast.makeText(getContext(), "Please select a new date first", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        String teacherId = appt.getTeacherId(); // make sure Appointment has getTeacherId()
+
+        loadAvailableTimeSlots(teacherId, date, appt.getId(), freeSlots -> {
+            if (freeSlots.isEmpty()) {
+                Toast.makeText(getContext(),
+                        "No available times for this date.",
+                        Toast.LENGTH_LONG).show();
+                return;
+            }
+
+            CharSequence[] items = freeSlots.toArray(new CharSequence[0]);
+
+            new AlertDialog.Builder(getContext())
+                    .setTitle("Select Time")
+                    .setItems(items, (dialog, which) -> {
+                        etNewTime.setText(freeSlots.get(which));
+                    })
+                    .show();
+        });
     }
 }
