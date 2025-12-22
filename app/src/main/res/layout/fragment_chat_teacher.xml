@@ -10,7 +10,7 @@
         android:id="@+id/topBarChat"
         android:layout_width="0dp"
         android:layout_height="56dp"
-        android:background="#A9BCE8"
+        android:background="#fff58a"
         android:paddingStart="12dp"
         android:paddingEnd="12dp"
         android:gravity="center_vertical"
@@ -54,7 +54,7 @@
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:padding="8dp"
-        android:background="#E1E7F5"
+        android:background="#fff58a"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">

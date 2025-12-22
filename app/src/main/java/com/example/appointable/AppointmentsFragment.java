@@ -14,6 +14,7 @@ import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -40,37 +41,32 @@ public class AppointmentsFragment extends Fragment {
 
     private RecyclerView rvAppointments;
     private AppointmentAdapter adapter;
-    private final List<Appointment> appointmentList = new ArrayList<>();
 
-    // Master list from Firestore (all statuses)
-    private final List<Appointment> allAppointments = new ArrayList<>();
+    private final List<Appointment> appointmentList = new ArrayList<Appointment>();
+    private final List<Appointment> allAppointments = new ArrayList<Appointment>();
 
-    // Current status filter: "Pending", "Canceled", "Rescheduled", "Completed"
-    // (Pending filter will include both Pending + Accepted)
     private String currentStatusFilter = "Pending";
 
-    // Layouts for the status cards (for click + highlight)
     private MaterialCardView layoutCanceled, layoutRescheduled, layoutPending, layoutCompleted;
 
-    private List<String> teacherNamesList = new ArrayList<>();
-    private List<String> teacherIdList = new ArrayList<>();
+    private final List<String> teacherNamesList = new ArrayList<String>();
+    private final List<String> teacherIdList = new ArrayList<String>();
 
     private TextView tvCanceledCount, tvRescheduledCount, tvCompletedCount, tvPendingCount;
 
+    // Date format used across dialogs
+    private final SimpleDateFormat dateOnlySdf = new SimpleDateFormat("M/d/yyyy", Locale.getDefault());
+
     public AppointmentsFragment() {}
 
-    // -----------------------------------------------------------
-    // LIFECYCLE
-    // -----------------------------------------------------------
     @Override
-    public View onCreateView(LayoutInflater inflater, ViewGroup container,
+    public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
 
         View root = inflater.inflate(R.layout.activity_parent_appointment_fragment, container, false);
 
         initViews(root);
         initRecycler();
-
         loadAppointments();
 
         return root;
@@ -85,14 +81,12 @@ public class AppointmentsFragment extends Fragment {
 
         rvAppointments = root.findViewById(R.id.rvAppointments);
 
-        // Status card layouts
         layoutCanceled    = root.findViewById(R.id.layoutCanceled);
         layoutRescheduled = root.findViewById(R.id.layoutRescheduled);
         layoutPending     = root.findViewById(R.id.layoutPending);
         layoutCompleted   = root.findViewById(R.id.layoutCompleted);
 
-        // Click listeners for filtering
-        layoutPending.setOnClickListener(v -> setStatusFilter("Pending"));      // Pending + Accepted
+        layoutPending.setOnClickListener(v -> setStatusFilter("Pending"));
         layoutCanceled.setOnClickListener(v -> setStatusFilter("Canceled"));
         layoutRescheduled.setOnClickListener(v -> setStatusFilter("Rescheduled"));
         layoutCompleted.setOnClickListener(v -> setStatusFilter("Completed"));
@@ -108,10 +102,12 @@ public class AppointmentsFragment extends Fragment {
             public void onCancel(Appointment appt) {
                 showCancelConfirmation(appt);
             }
+
             @Override
             public void onReschedule(Appointment appt) {
                 showRescheduleDialog(appt);
             }
+
             @Override
             public void onMoreOptions(Appointment appt, View anchor) {
                 showPopupOptions(appt, anchor);
@@ -121,7 +117,7 @@ public class AppointmentsFragment extends Fragment {
     }
 
     // -----------------------------------------------------------
-    // LOAD APPOINTMENTS FROM FIRESTORE
+    // LOAD APPOINTMENTS
     // -----------------------------------------------------------
     private void loadAppointments() {
 
@@ -134,8 +130,8 @@ public class AppointmentsFragment extends Fragment {
                 .get()
                 .addOnSuccessListener(query -> {
 
-                    allAppointments.clear();      // master list
-                    appointmentList.clear();      // visible list
+                    allAppointments.clear();
+                    appointmentList.clear();
 
                     int canceled = 0, rescheduled = 0, pending = 0, completed = 0;
 
@@ -144,12 +140,13 @@ public class AppointmentsFragment extends Fragment {
                         Appointment appt = doc.toObject(Appointment.class);
                         if (appt == null) continue;
 
+                        if (appt.getId() == null || appt.getId().trim().isEmpty()) {
+                            appt.setId(doc.getId());
+                        }
+
                         allAppointments.add(appt);
 
-                        String statusRaw = appt.getStatus();
-                        String status = statusRaw != null
-                                ? statusRaw.toLowerCase()
-                                : "";
+                        String status = appt.getStatus() == null ? "" : appt.getStatus().toLowerCase();
 
                         switch (status) {
                             case "canceled":
@@ -163,7 +160,6 @@ public class AppointmentsFragment extends Fragment {
                                 break;
                             case "pending":
                             case "accepted":
-                                // Pending bucket includes Pending + Accepted
                                 pending++;
                                 break;
                         }
@@ -176,39 +172,36 @@ public class AppointmentsFragment extends Fragment {
 
                     applyStatusFilter();
                     highlightSelectedStatus();
-                });
+                })
+                .addOnFailureListener(e ->
+                        Toast.makeText(getContext(), "Failed to load appointments: " + e.getMessage(), Toast.LENGTH_LONG).show()
+                );
     }
 
-    // When user taps one of the cards
     private void setStatusFilter(String status) {
         currentStatusFilter = status;
         applyStatusFilter();
         highlightSelectedStatus();
     }
 
-    // Build appointmentList based on currentStatusFilter
     private void applyStatusFilter() {
         appointmentList.clear();
 
         for (Appointment a : allAppointments) {
             String st = a.getStatus();
-
             if (st == null) continue;
 
             if ("Pending".equalsIgnoreCase(currentStatusFilter)) {
-                // Pending filter shows both Pending AND Accepted
                 if (st.equalsIgnoreCase("Pending") || st.equalsIgnoreCase("Accepted")) {
                     appointmentList.add(a);
                 }
             } else {
-                // Other filters: exact match
                 if (st.equalsIgnoreCase(currentStatusFilter)) {
                     appointmentList.add(a);
                 }
             }
         }
 
-        // ------- SORT BY NEAREST DATE/TIME (soonest at the top) -------
         Collections.sort(appointmentList, new Comparator<Appointment>() {
             @Override
             public int compare(Appointment a1, Appointment a2) {
@@ -216,30 +209,24 @@ public class AppointmentsFragment extends Fragment {
                 Date d2 = parseAppointmentDateTime(a2);
 
                 if (d1 == null && d2 == null) return 0;
-                if (d1 == null) return 1;  // nulls go to bottom
+                if (d1 == null) return 1;
                 if (d2 == null) return -1;
 
-                return d1.compareTo(d2);   // ascending: earliest first
+                return d1.compareTo(d2);
             }
         });
-        // --------------------------------------------------------------
 
-        if (adapter != null) {
-            adapter.notifyDataSetChanged();
-        }
+        if (adapter != null) adapter.notifyDataSetChanged();
     }
 
-    // Simple highlight by changing alpha on the selected card
     private void highlightSelectedStatus() {
-        if (layoutPending == null) return; // safety if views not ready yet
+        if (layoutPending == null) return;
 
-        // Reset
         layoutPending.setAlpha(1f);
         layoutCanceled.setAlpha(1f);
         layoutRescheduled.setAlpha(1f);
         layoutCompleted.setAlpha(1f);
 
-        // Dim the selected one a bit (or adjust as you like)
         switch (currentStatusFilter) {
             case "Pending":
                 layoutPending.setAlpha(0.7f);
@@ -259,19 +246,15 @@ public class AppointmentsFragment extends Fragment {
     private Date parseAppointmentDateTime(Appointment appt) {
         if (appt == null) return null;
 
-        String dateStr = appt.getDate(); // e.g. "3/25/2025"
-        String timeStr = appt.getTime(); // e.g. "2:30 PM"
+        String dateStr = appt.getDate();
+        String timeStr = appt.getTime();
 
         if (dateStr == null || timeStr == null) return null;
 
-        String combined = dateStr + " " + timeStr;
-
-        // Pattern must match how you format date/time in pickDate/pickTime
         SimpleDateFormat sdf = new SimpleDateFormat("M/d/yyyy h:mm a", Locale.getDefault());
         try {
-            return sdf.parse(combined);
+            return sdf.parse(dateStr + " " + timeStr);
         } catch (ParseException e) {
-            e.printStackTrace();
             return null;
         }
     }
@@ -290,8 +273,7 @@ public class AppointmentsFragment extends Fragment {
         EditText etTime = view.findViewById(R.id.etTime);
         MaterialButton btnSave = view.findViewById(R.id.btnSaveAppointment);
 
-        // ---- Appointment Type Spinner with hint ----
-        String[] types = {
+        String[] types = new String[]{
                 "--Select Appointment Type--",
                 "Admin Officer",
                 "OT Associates",
@@ -307,7 +289,6 @@ public class AppointmentsFragment extends Fragment {
         ) {
             @Override
             public boolean isEnabled(int position) {
-                // Disable the first item (hint)
                 return position != 0;
             }
 
@@ -315,106 +296,315 @@ public class AppointmentsFragment extends Fragment {
             public View getDropDownView(int position, View convertView, ViewGroup parent) {
                 View v = super.getDropDownView(position, convertView, parent);
                 TextView tv = (TextView) v;
-                if (position == 0) {
-                    tv.setTextColor(0xFF9E9E9E); // gray
-                } else {
-                    tv.setTextColor(0xFF000000); // black
-                }
+                tv.setTextColor(position == 0 ? 0xFF9E9E9E : 0xFF000000);
                 return v;
             }
         };
+
         spinnerType.setAdapter(typeAdapter);
         spinnerType.setSelection(0);
 
-        // ---- Teachers (hint added inside loadTeachers) ----
-        loadTeachers(spinnerTeacher);
+        setTeacherSpinnerWaitingType(spinnerTeacher);
+        btnSave.setEnabled(false);
 
-        etDate.setOnClickListener(v -> pickDate(etDate));
-        etTime.setOnClickListener(v -> pickTime(etTime));
+        spinnerType.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(android.widget.AdapterView<?> parent, View v, int position, long id) {
+
+                if (position == 0) {
+                    setTeacherSpinnerWaitingType(spinnerTeacher);
+                    teacherNamesList.clear();
+                    teacherIdList.clear();
+                    btnSave.setEnabled(false);
+                    return;
+                }
+
+                String selectedRole = spinnerType.getSelectedItem().toString();
+
+                setTeacherSpinnerLoading(spinnerTeacher);
+                btnSave.setEnabled(false);
+
+                loadTeachersByRole(spinnerTeacher, btnSave, selectedRole);
+            }
+
+            @Override
+            public void onNothingSelected(android.widget.AdapterView<?> parent) {}
+        });
+
+        etDate.setOnClickListener(v -> pickFutureDate(etDate));
+        etTime.setOnClickListener(v -> pickTimeRange(etTime, "Select Time"));
 
         AlertDialog dialog = builder.create();
 
         btnSave.setOnClickListener(v -> {
 
             int typePos = spinnerType.getSelectedItemPosition();
-            int teacherPos = spinnerTeacher.getSelectedItemPosition();
-
-            // Validate type
-            if (typePos == 0) {
+            if (typePos <= 0) {
                 Toast.makeText(getContext(), "Please select appointment type", Toast.LENGTH_SHORT).show();
                 return;
             }
 
-            // Validate teacher
-            if (teacherPos == 0) {
+            if (teacherNamesList.isEmpty() || teacherIdList.isEmpty()) {
+                Toast.makeText(getContext(), "No staff available for this type", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            int teacherPos = spinnerTeacher.getSelectedItemPosition();
+            if (teacherPos <= 0) {
                 Toast.makeText(getContext(), "Please select teacher", Toast.LENGTH_SHORT).show();
                 return;
             }
 
+            int index = teacherPos - 1;
+            if (index < 0 || index >= teacherNamesList.size() || index >= teacherIdList.size()) {
+                Toast.makeText(getContext(), "Teacher selection invalid. Please try again.", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
             String service = spinnerType.getSelectedItem().toString();
-            String date = etDate.getText().toString();
-            String time = etTime.getText().toString();
+            String date = etDate.getText().toString().trim();
+            String time = etTime.getText().toString().trim();
 
             if (date.isEmpty() || time.isEmpty()) {
                 Toast.makeText(getContext(), "Pick date & time", Toast.LENGTH_SHORT).show();
                 return;
             }
 
-            // teacherPos - 1 because index 0 is "--Select Teacher--"
-            String teacherName = teacherNamesList.get(teacherPos - 1);
-            String teacherId   = teacherIdList.get(teacherPos - 1);
+            // Extra safety: prevent saving past date
+            if (!isSelectedDateTodayOrFuture(date)) {
+                Toast.makeText(getContext(), "Past dates are not allowed", Toast.LENGTH_SHORT).show();
+                return;
+            }
 
-            saveAppointment(
-                    service,
-                    date,
-                    time,
-                    teacherName,
-                    teacherId
-            );
+            String teacherName = teacherNamesList.get(index);
+            String teacherId = teacherIdList.get(index);
 
-            dialog.dismiss();
+            saveAppointment(service, date, time, teacherName, teacherId, dialog);
         });
 
         dialog.show();
     }
 
-    private void pickDate(EditText et) {
+    private void setTeacherSpinnerWaitingType(Spinner spinnerTeacher) {
+        List<String> list = new ArrayList<String>();
+        list.add("--Select Appointment Type First--");
+
+        ArrayAdapter<String> adapter = new ArrayAdapter<String>(
+                getContext(),
+                android.R.layout.simple_spinner_dropdown_item,
+                list
+        ) {
+            @Override
+            public boolean isEnabled(int position) {
+                return false;
+            }
+        };
+
+        spinnerTeacher.setAdapter(adapter);
+        spinnerTeacher.setSelection(0);
+    }
+
+    private void setTeacherSpinnerLoading(Spinner spinnerTeacher) {
+        List<String> list = new ArrayList<String>();
+        list.add("--Loading Staff--");
+
+        ArrayAdapter<String> adapter = new ArrayAdapter<String>(
+                getContext(),
+                android.R.layout.simple_spinner_dropdown_item,
+                list
+        ) {
+            @Override
+            public boolean isEnabled(int position) {
+                return false;
+            }
+        };
+
+        spinnerTeacher.setAdapter(adapter);
+        spinnerTeacher.setSelection(0);
+    }
+
+    private void setTeacherSpinnerError(Spinner spinnerTeacher) {
+        List<String> list = new ArrayList<String>();
+        list.add("--Failed to Load Staff--");
+
+        ArrayAdapter<String> adapter = new ArrayAdapter<String>(
+                getContext(),
+                android.R.layout.simple_spinner_dropdown_item,
+                list
+        ) {
+            @Override
+            public boolean isEnabled(int position) {
+                return false;
+            }
+        };
+
+        spinnerTeacher.setAdapter(adapter);
+        spinnerTeacher.setSelection(0);
+    }
+
+    private void loadTeachersByRole(Spinner spinnerTeacher, MaterialButton btnSave, String role) {
+
+        teacherNamesList.clear();
+        teacherIdList.clear();
+        btnSave.setEnabled(false);
+
+        FirebaseFirestore.getInstance()
+                .collection("users")
+                .whereEqualTo("role", role)
+                .get()
+                .addOnSuccessListener(query -> {
+
+                    for (DocumentSnapshot doc : query) {
+                        String first = doc.getString("firstName");
+                        String last = doc.getString("lastName");
+                        if (first == null) first = "";
+                        if (last == null) last = "";
+
+                        String name = (first + " " + last).trim();
+                        if (name.isEmpty()) name = role;
+
+                        teacherNamesList.add(name);
+                        teacherIdList.add(doc.getId());
+                    }
+
+                    List<String> displayList = new ArrayList<String>();
+                    displayList.add("--Select Teacher--");
+                    displayList.addAll(teacherNamesList);
+
+                    ArrayAdapter<String> adapter = new ArrayAdapter<String>(
+                            getContext(),
+                            android.R.layout.simple_spinner_dropdown_item,
+                            displayList
+                    ) {
+                        @Override
+                        public boolean isEnabled(int position) {
+                            return position != 0;
+                        }
+
+                        @Override
+                        public View getDropDownView(int position, View convertView, ViewGroup parent) {
+                            View v = super.getDropDownView(position, convertView, parent);
+                            TextView tv = (TextView) v;
+                            tv.setTextColor(position == 0 ? 0xFF9E9E9E : 0xFF000000);
+                            return v;
+                        }
+                    };
+
+                    spinnerTeacher.setAdapter(adapter);
+                    spinnerTeacher.setSelection(0);
+
+                    if (teacherNamesList.isEmpty()) {
+                        Toast.makeText(getContext(), "No staff found for: " + role, Toast.LENGTH_LONG).show();
+                        btnSave.setEnabled(false);
+                    } else {
+                        btnSave.setEnabled(true);
+                    }
+                })
+                .addOnFailureListener(e -> {
+                    Toast.makeText(getContext(), "Failed to load staff: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                    btnSave.setEnabled(false);
+                    setTeacherSpinnerError(spinnerTeacher);
+                });
+    }
+
+    // -----------------------------------------------------------
+    // DATE PICKER: DISABLE PAST DATES
+    // -----------------------------------------------------------
+    private void pickFutureDate(EditText et) {
         Calendar c = Calendar.getInstance();
-        new DatePickerDialog(
+
+        DatePickerDialog dp = new DatePickerDialog(
                 getContext(),
                 (picker, y, m, d) -> et.setText((m + 1) + "/" + d + "/" + y),
                 c.get(Calendar.YEAR),
                 c.get(Calendar.MONTH),
                 c.get(Calendar.DAY_OF_MONTH)
-        ).show();
+        );
+
+        // Disable past dates (today allowed)
+        dp.getDatePicker().setMinDate(getStartOfTodayMillis());
+
+        dp.show();
     }
 
-    private void pickTime(EditText et) {
-        Calendar c = Calendar.getInstance();
-        new TimePickerDialog(
+    private long getStartOfTodayMillis() {
+        Calendar cal = Calendar.getInstance();
+        cal.set(Calendar.HOUR_OF_DAY, 0);
+        cal.set(Calendar.MINUTE, 0);
+        cal.set(Calendar.SECOND, 0);
+        cal.set(Calendar.MILLISECOND, 0);
+        return cal.getTimeInMillis();
+    }
+
+    private boolean isSelectedDateTodayOrFuture(String dateStr) {
+        try {
+            Date selected = dateOnlySdf.parse(dateStr);
+            if (selected == null) return false;
+
+            Calendar selCal = Calendar.getInstance();
+            selCal.setTime(selected);
+            selCal.set(Calendar.HOUR_OF_DAY, 0);
+            selCal.set(Calendar.MINUTE, 0);
+            selCal.set(Calendar.SECOND, 0);
+            selCal.set(Calendar.MILLISECOND, 0);
+
+            return selCal.getTimeInMillis() >= getStartOfTodayMillis();
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    // -----------------------------------------------------------
+    // TIME PICKER: 6AM to 6PM ONLY
+    // -----------------------------------------------------------
+    private void pickTimeRange(EditText et, String title) {
+
+        Calendar now = Calendar.getInstance();
+        int startHour = 6;   // 6 AM
+        int endHour = 18;    // 6 PM
+
+        // Default to nearest valid hour inside range
+        int defaultHour = now.get(Calendar.HOUR_OF_DAY);
+        if (defaultHour < startHour) defaultHour = startHour;
+        if (defaultHour > endHour) defaultHour = startHour;
+
+        int defaultMin = now.get(Calendar.MINUTE);
+
+        TimePickerDialog tp = new TimePickerDialog(
                 getContext(),
-                (picker, h, m) -> {
-                    String ampm = h >= 12 ? "PM" : "AM";
-                    int hr = (h % 12 == 0 ? 12 : h % 12);
-                    et.setText(hr + ":" + String.format("%02d", m) + " " + ampm);
+                (picker, hourOfDay, minute) -> {
+
+                    // Block anything outside 6am-6pm (6pm allowed only at 6:00)
+                    if (hourOfDay < startHour || hourOfDay > endHour || (hourOfDay == endHour && minute > 0)) {
+                        Toast.makeText(getContext(), "Time must be between 6:00 AM and 6:00 PM", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+
+                    String ampm = hourOfDay >= 12 ? "PM" : "AM";
+                    int hr = (hourOfDay % 12 == 0 ? 12 : hourOfDay % 12);
+                    et.setText(hr + ":" + String.format(Locale.getDefault(), "%02d", minute) + " " + ampm);
                 },
-                c.get(Calendar.HOUR_OF_DAY),
-                c.get(Calendar.MINUTE),
+                defaultHour,
+                defaultMin,
                 false
-        ).show();
+        );
+
+        tp.setTitle(title);
+        tp.show();
     }
 
     // -----------------------------------------------------------
     // SAVE APPOINTMENT
     // -----------------------------------------------------------
     private void saveAppointment(String service, String date, String time,
-                                 String teacherName, String teacherId) {
+                                 String teacherName, String teacherId,
+                                 AlertDialog dialogToClose) {
 
         FirebaseFirestore db = FirebaseFirestore.getInstance();
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
 
-        if (user == null || date.isEmpty() || time.isEmpty()) {
-            Toast.makeText(getContext(), "Pick date & time", Toast.LENGTH_SHORT).show();
+        if (user == null) {
+            Toast.makeText(getContext(), "User not logged in", Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -424,7 +614,14 @@ public class AppointmentsFragment extends Fragment {
                 .get()
                 .addOnSuccessListener(doc -> {
 
-                    String childName = doc.getString("firstName") + " " + doc.getString("lastName");
+                    String first = doc.getString("firstName");
+                    String last = doc.getString("lastName");
+                    if (first == null) first = "";
+                    if (last == null) last = "";
+
+                    String childName = (first + " " + last).trim();
+                    if (childName.isEmpty()) childName = "Student";
+
                     String id = db.collection("appointments").document().getId();
 
                     Appointment appt = new Appointment(
@@ -437,9 +634,18 @@ public class AppointmentsFragment extends Fragment {
                             .set(appt)
                             .addOnSuccessListener(a -> {
                                 Toast.makeText(getContext(), "Appointment Sent", Toast.LENGTH_SHORT).show();
+                                if (dialogToClose != null && dialogToClose.isShowing()) {
+                                    dialogToClose.dismiss();
+                                }
                                 loadAppointments();
-                            });
-                });
+                            })
+                            .addOnFailureListener(e ->
+                                    Toast.makeText(getContext(), "Save failed: " + e.getMessage(), Toast.LENGTH_LONG).show()
+                            );
+                })
+                .addOnFailureListener(e ->
+                        Toast.makeText(getContext(), "User fetch failed: " + e.getMessage(), Toast.LENGTH_LONG).show()
+                );
     }
 
     // -----------------------------------------------------------
@@ -449,16 +655,13 @@ public class AppointmentsFragment extends Fragment {
         PopupMenu popup = new PopupMenu(getContext(), anchor);
         popup.getMenuInflater().inflate(R.menu.menu_appointment_options, popup.getMenu());
 
-        // Get status safely
         String status = appt.getStatus() != null ? appt.getStatus() : "";
 
-        // If status is "Canceled", only show "Remove Appointment"
         if (status.equalsIgnoreCase("Canceled")) {
             popup.getMenu().findItem(R.id.action_reschedule).setVisible(false);
             popup.getMenu().findItem(R.id.action_cancel).setVisible(false);
             popup.getMenu().findItem(R.id.action_remove).setVisible(true);
         } else {
-            // For non-canceled: show Reschedule + Cancel, hide Remove
             popup.getMenu().findItem(R.id.action_reschedule).setVisible(true);
             popup.getMenu().findItem(R.id.action_cancel).setVisible(true);
             popup.getMenu().findItem(R.id.action_remove).setVisible(false);
@@ -503,7 +706,7 @@ public class AppointmentsFragment extends Fragment {
     }
 
     // -----------------------------------------------------------
-    // RESCHEDULE
+    // RESCHEDULE (DISABLE PAST DATES + TIME RANGE)
     // -----------------------------------------------------------
     private void showRescheduleDialog(Appointment appt) {
 
@@ -513,53 +716,42 @@ public class AppointmentsFragment extends Fragment {
         EditText etNewTime = view.findViewById(R.id.etNewTime);
         EditText etComment = view.findViewById(R.id.etComment);
 
-        etNewDate.setOnClickListener(v -> pickDate(etNewDate));
-        etNewTime.setOnClickListener(v -> pickTime(etNewTime));
+        etNewDate.setOnClickListener(v -> pickFutureDate(etNewDate));
+        etNewTime.setOnClickListener(v -> pickTimeRange(etNewTime, "Select New Time"));
 
         AlertDialog dialog = new AlertDialog.Builder(getContext())
                 .setTitle("Reschedule Appointment")
                 .setView(view)
-                .setPositiveButton("Save", null)   // override later
+                .setPositiveButton("Save", null)
                 .setNegativeButton("Cancel", (d, w) -> d.dismiss())
                 .create();
 
-        dialog.setOnShowListener(dlg -> {
-            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
-                String newDate = etNewDate.getText().toString().trim();
-                String newTime = etNewTime.getText().toString().trim();
-                String comment = etComment.getText().toString().trim();
+        dialog.setOnShowListener(dlg -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+            String newDate = etNewDate.getText().toString().trim();
+            String newTime = etNewTime.getText().toString().trim();
+            String comment = etComment.getText().toString().trim();
 
-                boolean hasError = false;
+            boolean hasError = false;
 
-                if (newDate.isEmpty()) {
-                    etNewDate.setError("Please select a new date");
-                    hasError = true;
-                } else {
-                    etNewDate.setError(null);
-                }
+            if (newDate.isEmpty()) { etNewDate.setError("Please select a new date"); hasError = true; }
+            else etNewDate.setError(null);
 
-                if (newTime.isEmpty()) {
-                    etNewTime.setError("Please select a new time");
-                    hasError = true;
-                } else {
-                    etNewTime.setError(null);
-                }
+            if (newTime.isEmpty()) { etNewTime.setError("Please select a new time"); hasError = true; }
+            else etNewTime.setError(null);
 
-                if (comment.isEmpty()) {
-                    etComment.setError("Please provide a comment / reason");
-                    hasError = true;
-                } else {
-                    etComment.setError(null);
-                }
+            if (comment.isEmpty()) { etComment.setError("Please provide a comment / reason"); hasError = true; }
+            else etComment.setError(null);
 
-                if (hasError) {
-                    return; // keep dialog open
-                }
+            if (hasError) return;
 
-                updateReschedule(appt, newDate, newTime, comment);
-                dialog.dismiss();
-            });
-        });
+            if (!isSelectedDateTodayOrFuture(newDate)) {
+                Toast.makeText(getContext(), "Past dates are not allowed", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            updateReschedule(appt, newDate, newTime, comment);
+            dialog.dismiss();
+        }));
 
         dialog.show();
     }
@@ -569,7 +761,10 @@ public class AppointmentsFragment extends Fragment {
                 .collection("appointments")
                 .document(appt.getId())
                 .update("status", newStatus)
-                .addOnSuccessListener(a -> loadAppointments());
+                .addOnSuccessListener(a -> loadAppointments())
+                .addOnFailureListener(e ->
+                        Toast.makeText(getContext(), "Update failed: " + e.getMessage(), Toast.LENGTH_LONG).show()
+                );
     }
 
     private void updateReschedule(Appointment appt, String newDate, String newTime, String comment) {
@@ -582,7 +777,10 @@ public class AppointmentsFragment extends Fragment {
                         "status", "Rescheduled",
                         "rescheduleComment", comment
                 )
-                .addOnSuccessListener(a -> loadAppointments());
+                .addOnSuccessListener(a -> loadAppointments())
+                .addOnFailureListener(e ->
+                        Toast.makeText(getContext(), "Reschedule failed: " + e.getMessage(), Toast.LENGTH_LONG).show()
+                );
     }
 
     // -----------------------------------------------------------
@@ -598,60 +796,7 @@ public class AppointmentsFragment extends Fragment {
                     loadAppointments();
                 })
                 .addOnFailureListener(e ->
-                        Toast.makeText(getContext(), "Failed to remove", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(getContext(), "Failed to remove: " + e.getMessage(), Toast.LENGTH_LONG).show()
                 );
-    }
-
-    // -----------------------------------------------------------
-    // LOAD TEACHERS
-    // -----------------------------------------------------------
-    private void loadTeachers(Spinner spinnerTeacher) {
-        FirebaseFirestore.getInstance()
-                .collection("users")
-                .whereEqualTo("role", "Sped Teacher")
-                .get()
-                .addOnSuccessListener(query -> {
-
-                    teacherNamesList.clear();
-                    teacherIdList.clear();
-
-                    for (DocumentSnapshot doc : query) {
-                        String name = doc.getString("firstName") + " " + doc.getString("lastName");
-                        teacherNamesList.add(name);
-                        teacherIdList.add(doc.getId());
-                    }
-
-                    // Build display list with hint at index 0
-                    List<String> displayList = new ArrayList<>();
-                    displayList.add("--Select Teacher--");
-                    displayList.addAll(teacherNamesList);
-
-                    ArrayAdapter<String> adapter = new ArrayAdapter<String>(
-                            getContext(),
-                            android.R.layout.simple_spinner_dropdown_item,
-                            displayList
-                    ) {
-                        @Override
-                        public boolean isEnabled(int position) {
-                            // Disable first item (hint)
-                            return position != 0;
-                        }
-
-                        @Override
-                        public View getDropDownView(int position, View convertView, ViewGroup parent) {
-                            View v = super.getDropDownView(position, convertView, parent);
-                            TextView tv = (TextView) v;
-                            if (position == 0) {
-                                tv.setTextColor(0xFF9E9E9E); // gray
-                            } else {
-                                tv.setTextColor(0xFF000000); // black
-                            }
-                            return v;
-                        }
-                    };
-
-                    spinnerTeacher.setAdapter(adapter);
-                    spinnerTeacher.setSelection(0);
-                });
     }
 }

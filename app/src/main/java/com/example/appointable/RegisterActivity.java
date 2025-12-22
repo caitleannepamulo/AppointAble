@@ -25,7 +25,10 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.FirebaseFirestoreException;
 
 import java.util.Calendar;
 import java.util.HashMap;
@@ -86,6 +89,7 @@ public class RegisterActivity extends AppCompatActivity {
 
         etEmail = findViewById(R.id.etEmail);
         etUsername = findViewById(R.id.etUsername);
+
         etPassword = findViewById(R.id.etPassword);
         etConfirmPassword = findViewById(R.id.etconfirmPassword);
 
@@ -235,12 +239,8 @@ public class RegisterActivity extends AppCompatActivity {
         boolean hasSpecial = false;
 
         for (char c : password.toCharArray()) {
-            if (Character.isUpperCase(c)) {
-                hasUpper = true;
-            }
-            if ("!@#$%^&*()_+-={}[]|:;\"'<>,.?/".indexOf(c) >= 0) {
-                hasSpecial = true;
-            }
+            if (Character.isUpperCase(c)) hasUpper = true;
+            if ("!@#$%^&*()_+-={}[]|:;\"'<>,.?/".indexOf(c) >= 0) hasSpecial = true;
         }
 
         return hasUpper && hasSpecial;
@@ -249,6 +249,18 @@ public class RegisterActivity extends AppCompatActivity {
     private boolean isValidContact(String contact) {
         if (contact == null) return false;
         return contact.matches("\\d{11,12}");
+    }
+
+    private String normalizeUsernameKey(String username) {
+        if (username == null) return "";
+        return username.trim().toLowerCase();
+    }
+
+    private void rollbackAuthUser() {
+        FirebaseUser u = mAuth.getCurrentUser();
+        if (u != null) {
+            u.delete();
+        }
     }
 
     private void registerUser() {
@@ -264,17 +276,14 @@ public class RegisterActivity extends AppCompatActivity {
         String age = etAge.getText().toString().trim();
         String contact = etContact.getText().toString().trim();
         String email = etEmail.getText().toString().trim();
-        String username = etUsername.getText().toString().trim();
+        String usernameDisplay = etUsername.getText().toString().trim();
         String pass = etPassword.getText().toString().trim();
         String confirm = etConfirmPassword.getText().toString().trim();
 
         int selectedGenderId = rgGender.getCheckedRadioButtonId();
         String genderTemp = null;
-        if (selectedGenderId == R.id.rbMale) {
-            genderTemp = "Male";
-        } else if (selectedGenderId == R.id.rbFemale) {
-            genderTemp = "Female";
-        }
+        if (selectedGenderId == R.id.rbMale) genderTemp = "Male";
+        else if (selectedGenderId == R.id.rbFemale) genderTemp = "Female";
         final String gender = genderTemp;
 
         String role = spinnerRole.getSelectedItem() != null
@@ -283,54 +292,21 @@ public class RegisterActivity extends AppCompatActivity {
 
         boolean isValid = true;
 
-        if (first.isEmpty()) {
-            etFirstname.setError("First name is required");
-            isValid = false;
-        }
-
-        if (last.isEmpty()) {
-            etLastname.setError("Last name is required");
-            isValid = false;
-        }
-
-        if (birthdate.isEmpty()) {
-            etBirthdate.setError("Birthdate is required");
-            isValid = false;
-        }
-
-        if (contact.isEmpty()) {
-            etContact.setError("Contact number is required");
-            isValid = false;
-        }
-
-        if (email.isEmpty()) {
-            etEmail.setError("Email is required");
-            isValid = false;
-        }
-
-        if (username.isEmpty()) {
-            etUsername.setError("Username is required");
-            isValid = false;
-        }
-
-        if (pass.isEmpty()) {
-            etPassword.setError("Password is required");
-            isValid = false;
-        }
-
-        if (confirm.isEmpty()) {
-            etConfirmPassword.setError("Please confirm your password");
-            isValid = false;
-        }
+        if (first.isEmpty()) { etFirstname.setError("First name is required"); isValid = false; }
+        if (last.isEmpty()) { etLastname.setError("Last name is required"); isValid = false; }
+        if (birthdate.isEmpty()) { etBirthdate.setError("Birthdate is required"); isValid = false; }
+        if (contact.isEmpty()) { etContact.setError("Contact number is required"); isValid = false; }
+        if (email.isEmpty()) { etEmail.setError("Email is required"); isValid = false; }
+        if (usernameDisplay.isEmpty()) { etUsername.setError("Username is required"); isValid = false; }
+        if (pass.isEmpty()) { etPassword.setError("Password is required"); isValid = false; }
+        if (confirm.isEmpty()) { etConfirmPassword.setError("Please confirm your password"); isValid = false; }
 
         if (gender == null) {
             Toast.makeText(this, "Please select gender.", Toast.LENGTH_SHORT).show();
             isValid = false;
         }
 
-        if (role.isEmpty()
-                || spinnerRole.getSelectedItemPosition() == 0
-                || "--Select Role--".equals(role)) {
+        if (role.isEmpty() || spinnerRole.getSelectedItemPosition() == 0 || "--Select Role--".equals(role)) {
             Toast.makeText(this, "Please select a valid role.", Toast.LENGTH_SHORT).show();
             isValid = false;
         }
@@ -358,86 +334,88 @@ public class RegisterActivity extends AppCompatActivity {
 
         setLoading(true);
 
-        String userId = generateUserId();
+        final String userId = generateUserId();
+        final String usernameKey = normalizeUsernameKey(usernameDisplay);
 
-        db.collection("users")
-                .whereEqualTo("username", username)
-                .get()
-                .addOnSuccessListener(usernameSnapshot -> {
-                    if (!usernameSnapshot.isEmpty()) {
-                        etUsername.setError("Username already exists.");
-                        Toast.makeText(this, "Username already exists.", Toast.LENGTH_LONG).show();
-                        setLoading(false);
-                        return;
-                    }
+        mAuth.createUserWithEmailAndPassword(email, pass)
+                .addOnSuccessListener(auth -> {
 
-                    db.collection("users")
-                            .whereEqualTo("email", email)
-                            .get()
-                            .addOnSuccessListener(emailSnapshot -> {
-                                if (!emailSnapshot.isEmpty()) {
-                                    etEmail.setError("Email already exists.");
-                                    Toast.makeText(this, "Email already exists.", Toast.LENGTH_LONG).show();
+                    final String uid = auth.getUser().getUid();
+
+                    db.runTransaction(transaction -> {
+
+                        DocumentReference usernameRef = db.collection("usernames").document(usernameKey);
+
+                        if (transaction.get(usernameRef).exists()) {
+                            throw new FirebaseFirestoreException(
+                                    "USERNAME_TAKEN",
+                                    FirebaseFirestoreException.Code.ABORTED
+                            );
+                        }
+
+                        Map<String, Object> usernameDoc = new HashMap<>();
+                        usernameDoc.put("uid", uid);
+                        usernameDoc.put("usernameKey", usernameKey);
+                        usernameDoc.put("usernameDisplay", usernameDisplay);
+
+                        transaction.set(usernameRef, usernameDoc);
+                        return null;
+
+                    }).addOnSuccessListener(r -> {
+
+                        Map<String, Object> user = new HashMap<>();
+                        user.put("uid", uid);
+                        user.put("userId", userId);
+                        user.put("firstName", first);
+                        user.put("lastName", last);
+                        user.put("middleName", middle);
+                        user.put("suffix", suffix);
+                        user.put("birthdate", birthdate);
+                        user.put("age", age);
+                        user.put("contact", contact);
+                        user.put("email", email);
+                        user.put("usernameKey", usernameKey);
+                        user.put("usernameDisplay", usernameDisplay);
+                        user.put("role", role);
+                        user.put("gender", gender);
+                        user.put("status", "Active");
+                        user.put("profileImageUrl", DEFAULT_PROFILE_IMAGE_URL);
+
+                        db.collection("users").document(uid)
+                                .set(user)
+                                .addOnSuccessListener(a -> {
                                     setLoading(false);
-                                    return;
-                                }
+                                    Toast.makeText(this, "Registered successfully!", Toast.LENGTH_SHORT).show();
+                                    startActivity(new Intent(this, LoginActivity.class));
+                                    finish();
+                                })
+                                .addOnFailureListener(e -> {
+                                    setLoading(false);
+                                    Toast.makeText(this, "Error saving user: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                                });
 
-                                mAuth.createUserWithEmailAndPassword(email, pass)
-                                        .addOnSuccessListener(auth -> {
-                                            String uid = auth.getUser().getUid();
+                    }).addOnFailureListener(e -> {
 
-                                            Map<String, Object> user = new HashMap<>();
-                                            user.put("uid", uid);
-                                            user.put("userId", userId);
-                                            user.put("firstName", first);
-                                            user.put("lastName", last);
-                                            user.put("middleName", middle);
-                                            user.put("suffix", suffix);
-                                            user.put("birthdate", birthdate);
-                                            user.put("age", age);
-                                            user.put("contact", contact);
-                                            user.put("email", email);
-                                            user.put("username", username);
-                                            user.put("role", role);
-                                            user.put("gender", gender);
-                                            user.put("status", "Active");
-                                            user.put("profileImageUrl", DEFAULT_PROFILE_IMAGE_URL);
+                        rollbackAuthUser();
 
-                                            db.collection("users").document(uid)
-                                                    .set(user)
-                                                    .addOnSuccessListener(a -> {
-                                                        Toast.makeText(this, "Registered successfully!", Toast.LENGTH_SHORT).show();
-                                                        startActivity(new Intent(this, LoginActivity.class));
-                                                        finish();
-                                                    })
-                                                    .addOnFailureListener(e -> {
-                                                        setLoading(false);
-                                                        Toast.makeText(this,
-                                                                "Error saving user: " + e.getMessage(),
-                                                                Toast.LENGTH_LONG).show();
-                                                    });
-                                        })
-                                        .addOnFailureListener(e -> {
-                                            setLoading(false);
-                                            Toast.makeText(this,
-                                                    "Registration failed: " + e.getMessage(),
-                                                    Toast.LENGTH_LONG).show();
-                                        });
-
-                            })
-                            .addOnFailureListener(e -> {
+                        if (e instanceof FirebaseFirestoreException) {
+                            FirebaseFirestoreException fe = (FirebaseFirestoreException) e;
+                            if ("USERNAME_TAKEN".equals(fe.getMessage())) {
+                                etUsername.setError("Username already exists.");
+                                Toast.makeText(this, "Username already exists.", Toast.LENGTH_LONG).show();
                                 setLoading(false);
-                                Toast.makeText(this,
-                                        "Error checking email: " + e.getMessage(),
-                                        Toast.LENGTH_LONG).show();
-                            });
+                                return;
+                            }
+                        }
+
+                        Toast.makeText(this, "Username reservation failed: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                        setLoading(false);
+                    });
 
                 })
                 .addOnFailureListener(e -> {
                     setLoading(false);
-                    Toast.makeText(this,
-                            "Error checking username: " + e.getMessage(),
-                            Toast.LENGTH_LONG).show();
+                    Toast.makeText(this, "Registration failed: " + e.getMessage(), Toast.LENGTH_LONG).show();
                 });
     }
 }

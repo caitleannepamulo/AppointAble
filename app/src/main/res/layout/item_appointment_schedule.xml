@@ -9,7 +9,7 @@
     card_view:cardCornerRadius="14dp"
     card_view:cardElevation="3dp"
     card_view:cardUseCompatPadding="false"
-    card_view:cardBackgroundColor="#C5D5EA">
+    card_view:cardBackgroundColor="#FFCF71">
 
     <LinearLayout
         android:layout_width="match_parent"

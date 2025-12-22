@@ -309,7 +309,8 @@
                 android:textSize="14sp"
                 android:background="@drawable/edittext_outline"
                 android:padding="8dp"
-                android:inputType="textEmailAddress" />
+                android:inputType="textEmailAddress"
+                android:autofillHints="emailAddress"/>
 
             <TextView
                 android:layout_width="wrap_content"
@@ -330,7 +331,9 @@
                 android:textSize="14sp"
                 android:background="@drawable/edittext_outline"
                 android:padding="8dp"
-                android:inputType="textPersonName" />
+                android:inputType="textPersonName"
+                android:autofillHints="username"
+                android:importantForAutofill="no"/>
 
             <TextView
                 android:layout_width="wrap_content"
@@ -361,7 +364,9 @@
                     android:textSize="14sp"
                     android:background="@android:color/transparent"
                     android:padding="0dp"
-                    android:inputType="textPassword" />
+                    android:inputType="textPassword"
+                    android:importantForAutofill="no"
+                    />
 
                 <ImageView
                     android:id="@+id/ivTogglePassword"
@@ -401,7 +406,8 @@
                     android:textSize="14sp"
                     android:background="@android:color/transparent"
                     android:padding="0dp"
-                    android:inputType="textPassword" />
+                    android:inputType="textPassword"
+                    android:importantForAutofill="no" />
 
                 <ImageView
                     android:id="@+id/ivToggleConfirmPassword"

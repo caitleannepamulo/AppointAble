@@ -54,14 +54,15 @@
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:orientation="vertical"
-                    android:gravity="center">
+                    android:gravity="center"
+                    android:background="#ffcf71">
 
                     <TextView
                         android:id="@+id/tvPending"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="-"
-                        android:textColor="#222222"
+                        android:textColor="#000000"
                         android:textSize="28sp"
                         android:textStyle="bold" />
 
@@ -70,7 +71,7 @@
                         android:layout_height="wrap_content"
                         android:text="Pending"
                         android:textSize="14sp"
-                        android:textColor="#666666" />
+                        android:textColor="#000000" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
@@ -91,14 +92,15 @@
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:orientation="vertical"
-                    android:gravity="center">
+                    android:gravity="center"
+                    android:background="#ffcf71">
 
                     <TextView
                         android:id="@+id/tvCanceledCount"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="-"
-                        android:textColor="#222222"
+                        android:textColor="#000000"
                         android:textSize="28sp"
                         android:textStyle="bold" />
 
@@ -107,7 +109,7 @@
                         android:layout_height="wrap_content"
                         android:text="Canceled"
                         android:textSize="14sp"
-                        android:textColor="#666666" />
+                        android:textColor="#000000" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
@@ -128,14 +130,15 @@
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:orientation="vertical"
-                    android:gravity="center">
+                    android:gravity="center"
+                    android:background="#ffcf71">
 
                     <TextView
                         android:id="@+id/tvRescheduledCount"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="-"
-                        android:textColor="#222222"
+                        android:textColor="#000000"
                         android:textSize="28sp"
                         android:textStyle="bold" />
 
@@ -144,7 +147,7 @@
                         android:layout_height="wrap_content"
                         android:text="Rescheduled"
                         android:textSize="14sp"
-                        android:textColor="#666666" />
+                        android:textColor="#000000" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
@@ -165,14 +168,15 @@
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:orientation="vertical"
-                    android:gravity="center">
+                    android:gravity="center"
+                    android:background="#ffcf71">
 
                     <TextView
                         android:id="@+id/tvCompletedCount"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="-"
-                        android:textColor="#222222"
+                        android:textColor="#000000"
                         android:textSize="28sp"
                         android:textStyle="bold" />
 
@@ -181,7 +185,7 @@
                         android:layout_height="wrap_content"
                         android:text="Completed"
                         android:textSize="14sp"
-                        android:textColor="#666666" />
+                        android:textColor="#000000" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
@@ -212,13 +216,12 @@
         android:paddingEnd="16dp"
         android:clipToPadding="false"/>
 
-    <!-- Floating Add Button -->
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/fabAdd"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:src="@drawable/ic_add"
-        app:backgroundTint="#5271FF"
+        app:backgroundTint="#ff9d00"
         app:tint="@android:color/white"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"

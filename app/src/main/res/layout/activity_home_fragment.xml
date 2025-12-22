@@ -10,7 +10,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:padding="10dp"
-        android:background="#ABB9EE">
+        android:background="#fff58a">
 
         <TextView
             android:id="@+id/morningNight"
@@ -94,8 +94,6 @@
         android:paddingRight="16dp"
         android:clipToPadding="false"
         android:visibility="gone"/>
-
-
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rvAppointments"

@@ -16,7 +16,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:padding="12dp"
-            android:background="#ABB9EE">
+            android:background="#fff58a">
 
             <TextView
                 android:id="@+id/goodMorning"

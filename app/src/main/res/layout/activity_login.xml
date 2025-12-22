@@ -42,7 +42,7 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="#C5D5EA"
+            android:background="#FFF58A"
             android:orientation="vertical"
             android:padding="28dp">
 
@@ -182,7 +182,7 @@
                     android:fontFamily="@font/poppins_bold"
                     android:textColor="@android:color/white"
                     android:textSize="16sp"
-                    android:backgroundTint="#385DC0"
+                    android:backgroundTint="#FF9D00"
                     app:cornerRadius="32dp" />
             </LinearLayout>
 

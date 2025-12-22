@@ -17,8 +17,6 @@ import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.example.appointable.AppointmentAdapter;
-import com.example.appointable.Appointment;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.DocumentSnapshot;
@@ -32,7 +30,6 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
-
 
 public class ParentHomeFragment extends Fragment {
 
@@ -48,6 +45,7 @@ public class ParentHomeFragment extends Fragment {
     private FirebaseAuth mAuth;
     private FirebaseFirestore db;
 
+    // Tracks whichever day the user last selected (default = today)
     private Calendar currentSelectedDate = Calendar.getInstance();
 
     public ParentHomeFragment() {}
@@ -71,11 +69,17 @@ public class ParentHomeFragment extends Fragment {
         setupGreeting();
         initRecycler();
 
-        // Gray out past days
-        calendarView.setMinDate(System.currentTimeMillis());
+        // ✅ IMPORTANT:
+        // REMOVE this line so past dates remain clickable
+        // calendarView.setMinDate(System.currentTimeMillis());
 
-        loadAppointments();
+        // ✅ Set initial selected date UI + initial filter
+        long initialDateMillis = calendarView.getDate(); // calendar's current selected date (usually today)
+        currentSelectedDate.setTimeInMillis(initialDateMillis);
+        updateSelectedDateLabel(initialDateMillis);
+
         setupCalendarClick();
+        loadAppointments(); // will filter for the currently selected day after fetching
 
         return view;
     }
@@ -151,14 +155,20 @@ public class ParentHomeFragment extends Fragment {
 
                     for (DocumentSnapshot doc : query) {
                         Appointment appt = doc.toObject(Appointment.class);
-                        if (appt != null) allAppointments.add(appt);
+                        if (appt != null) {
+                            // Make sure your Appointment has a valid id.
+                            // If your Appointment class doesn't map "id", you can do:
+                            // appt.setId(doc.getId());
+                            allAppointments.add(appt);
+                        }
                     }
 
-                    // ⭐ Refresh currently selected day
+                    // ✅ Always refresh list for whichever date is selected
                     filterAppointmentsForDate(currentSelectedDate.getTimeInMillis());
-                });
+                })
+                .addOnFailureListener(e ->
+                        Toast.makeText(getContext(), "Failed to load appointments", Toast.LENGTH_SHORT).show());
     }
-
 
     // ---------------- CALENDAR CLICK ----------------
 
@@ -166,17 +176,27 @@ public class ParentHomeFragment extends Fragment {
         calendarView.setOnDateChangeListener((view, year, month, day) -> {
 
             Calendar selected = Calendar.getInstance();
-            selected.set(year, month, day);
+            selected.set(Calendar.YEAR, year);
+            selected.set(Calendar.MONTH, month);
+            selected.set(Calendar.DAY_OF_MONTH, day);
 
-            // ⭐ Save selected date
+            // Normalize time so matching is consistent
+            selected.set(Calendar.HOUR_OF_DAY, 0);
+            selected.set(Calendar.MINUTE, 0);
+            selected.set(Calendar.SECOND, 0);
+            selected.set(Calendar.MILLISECOND, 0);
+
             currentSelectedDate = (Calendar) selected.clone();
 
-            String formatted = new SimpleDateFormat("MMMM d", Locale.getDefault())
-                    .format(selected.getTime());
-            tvSelectedDate.setText(formatted);
-
+            updateSelectedDateLabel(selected.getTimeInMillis());
             filterAppointmentsForDate(selected.getTimeInMillis());
         });
+    }
+
+    private void updateSelectedDateLabel(long millis) {
+        String formatted = new SimpleDateFormat("MMMM d, yyyy", Locale.getDefault())
+                .format(new Date(millis));
+        tvSelectedDate.setText(formatted);
     }
 
     // ---------------- FILTERING ----------------
@@ -188,17 +208,35 @@ public class ParentHomeFragment extends Fragment {
         Calendar selected = Calendar.getInstance();
         selected.setTimeInMillis(dateMillis);
 
+        // Normalize selected day
+        selected.set(Calendar.HOUR_OF_DAY, 0);
+        selected.set(Calendar.MINUTE, 0);
+        selected.set(Calendar.SECOND, 0);
+        selected.set(Calendar.MILLISECOND, 0);
+
         int count = 0;
 
         for (Appointment a : allAppointments) {
             try {
+                if (a == null || a.getDate() == null) continue;
+
                 String[] parts = a.getDate().split("/");
+                if (parts.length < 3) continue;
+
                 int m = Integer.parseInt(parts[0]) - 1;
                 int d = Integer.parseInt(parts[1]);
                 int y = Integer.parseInt(parts[2]);
 
                 Calendar apptCal = Calendar.getInstance();
-                apptCal.set(y, m, d);
+                apptCal.set(Calendar.YEAR, y);
+                apptCal.set(Calendar.MONTH, m);
+                apptCal.set(Calendar.DAY_OF_MONTH, d);
+
+                // Normalize appt day
+                apptCal.set(Calendar.HOUR_OF_DAY, 0);
+                apptCal.set(Calendar.MINUTE, 0);
+                apptCal.set(Calendar.SECOND, 0);
+                apptCal.set(Calendar.MILLISECOND, 0);
 
                 if (isSameDay(selected, apptCal)) {
                     filteredAppointments.add(a);
@@ -232,8 +270,8 @@ public class ParentHomeFragment extends Fragment {
 
     private Date parseDateTime(Appointment appt) {
         try {
-            SimpleDateFormat sdf =
-                    new SimpleDateFormat("M/d/yyyy h:mm a", Locale.getDefault());
+            if (appt == null || appt.getDate() == null || appt.getTime() == null) return null;
+            SimpleDateFormat sdf = new SimpleDateFormat("M/d/yyyy h:mm a", Locale.getDefault());
             return sdf.parse(appt.getDate() + " " + appt.getTime());
         } catch (ParseException e) {
             return null;
@@ -334,8 +372,8 @@ public class ParentHomeFragment extends Fragment {
                 .setView(view)
                 .setPositiveButton("Save", (dialog, which) -> {
 
-                    String newDate = etNewDate.getText().toString();
-                    String newTime = etNewTime.getText().toString();
+                    String newDate = etNewDate.getText().toString().trim();
+                    String newTime = etNewTime.getText().toString().trim();
 
                     if (newDate.isEmpty() || newTime.isEmpty()) {
                         Toast.makeText(getContext(),
@@ -369,8 +407,7 @@ public class ParentHomeFragment extends Fragment {
                 (picker, h, m) -> {
                     String ampm = (h >= 12) ? "PM" : "AM";
                     int hour = (h % 12 == 0) ? 12 : h % 12;
-
-                    et.setText(hour + ":" + String.format("%02d", m) + " " + ampm);
+                    et.setText(hour + ":" + String.format(Locale.getDefault(), "%02d", m) + " " + ampm);
                 },
                 c.get(Calendar.HOUR_OF_DAY),
                 c.get(Calendar.MINUTE),
@@ -386,7 +423,9 @@ public class ParentHomeFragment extends Fragment {
                 .collection("appointments")
                 .document(appt.getId())
                 .update("status", status)
-                .addOnSuccessListener(a -> loadAppointments());
+                .addOnSuccessListener(a -> loadAppointments())
+                .addOnFailureListener(e ->
+                        Toast.makeText(getContext(), "Update failed", Toast.LENGTH_SHORT).show());
     }
 
     private void updateReschedule(Appointment appt, String newDate, String newTime) {
@@ -399,6 +438,8 @@ public class ParentHomeFragment extends Fragment {
                         "time", newTime,
                         "status", "Rescheduled"
                 )
-                .addOnSuccessListener(a -> loadAppointments());
+                .addOnSuccessListener(a -> loadAppointments())
+                .addOnFailureListener(e ->
+                        Toast.makeText(getContext(), "Reschedule failed", Toast.LENGTH_SHORT).show());
     }
 }

@@ -213,7 +213,7 @@
                 android:textSize="12sp"
                 android:textColor="#FFFFFF"
                 app:cornerRadius="8dp"
-                app:backgroundTint="#1565C0" />
+                app:backgroundTint="#FF9D00" />
 
         </LinearLayout>
 

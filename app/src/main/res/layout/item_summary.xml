@@ -9,7 +9,7 @@
     card_view:cardCornerRadius="14dp"
     card_view:cardElevation="3dp"
     card_view:cardUseCompatPadding="false"
-    card_view:cardBackgroundColor="#C5D5EA">
+    card_view:cardBackgroundColor="#FFCF71">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -51,8 +51,8 @@
                 android:layout_weight="1"
                 android:max="100"
                 android:progress="40"
-                android:progressTint="#FFCC33"
-                android:backgroundTint="#B0BEC5" />
+                android:progressTint="#CC561E"
+                android:backgroundTint="#F7E396" />
 
             <TextView
                 android:id="@+id/tvPercentage"
